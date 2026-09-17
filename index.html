@@ -238,6 +238,7 @@
 </style>
 </head>
 <body>
+<script id="state-data" type="application/json">null</script>
 
 <div class="topbar">
   <div class="brand">
@@ -359,6 +360,10 @@
 (function(){
   "use strict";
 
+  // Captured before any rendering touches the DOM, so this is the pristine
+  // published template — used to rebuild a fresh document to re-publish.
+  var RAW_TEMPLATE = document.documentElement.outerHTML;
+
   var STORAGE_KEY = "innohack30-queue-state-v1";
 
   var ROSTER = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
@@ -392,53 +397,83 @@
     };
   }
 
-  var state = defaultState();
+  function readEmbeddedState(){
+    var el = document.getElementById("state-data");
+    if (!el) return null;
+    var txt = (el.textContent || "").trim();
+    if (!txt || txt === "null") return null;
+    try { return JSON.parse(txt); } catch(e){ return null; }
+  }
+
+  var state = readEmbeddedState() || defaultState();
+  syncLiveTracking(); // put team P_ID 1 into "awaiting start" from the very first render
   var role = "display"; // display | control
   var controlUnlocked = false; // in-memory only (no browser storage allowed in artifacts)
   var ADMIN_PASSWORD = "innohack2026";
   var AVG_TEAM_SEC = 900; // ~15 min per team without extra time, used for ETA estimates
-  var lastLoadedRaw = null;
 
-  // ---------------- storage ----------------
-  var hasStorage = !!(window.storage && typeof window.storage.get === "function" && typeof window.storage.set === "function");
-  var memoryStore = {}; // fallback when the artifact storage API isn't available (e.g. file opened outside Claude.ai)
+  // ---------------- storage: Claude's "artifact" capability ----------------
+  // This page's shared state is embedded as JSON inside its own published HTML
+  // (the #state-data tag). A control-room action rebuilds the document with the
+  // updated JSON and re-publishes it; the platform then reloads EVERY open view
+  // — including students' own phones on the public link — to the new version.
+  // No sign-in / organization membership is required to just view a published page.
+  var hasArtifact = false;
+  var claudeArtifactNS = null;
+  var memoryStore = {};
+  var publishInFlight = false;
+  var publishPending = false;
 
-  function loadState(cb){
-    if (!hasStorage){
-      if (memoryStore[STORAGE_KEY]){
-        try { state = JSON.parse(memoryStore[STORAGE_KEY]); } catch(e){}
-      }
-      if (cb) cb();
+  function loadLocalFallback(){
+    if (memoryStore[STORAGE_KEY]){
+      try { state = JSON.parse(memoryStore[STORAGE_KEY]); } catch(e){}
+    }
+  }
+
+  function buildPublishHtml(){
+    var jsonSafe = JSON.stringify(state).replace(/<\/script/gi, "<\\/script");
+    return RAW_TEMPLATE.replace(
+      /<script id="state-data" type="application\/json">[\s\S]*?<\/script>/,
+      '<script id="state-data" type="application/json">' + jsonSafe + '<\/script>'
+    );
+  }
+
+  function persistState(){
+    state.updatedAt = Date.now();
+    if (!hasArtifact || !claudeArtifactNS){
+      memoryStore[STORAGE_KEY] = JSON.stringify(state);
       return;
     }
-    window.storage.get(STORAGE_KEY, true).then(function(res){
-      if (res && res.value) {
-        try {
-          var parsed = JSON.parse(res.value);
-          state = parsed;
-        } catch(e) {}
-      }
-      if (cb) cb();
-    }).catch(function(){
-      // key doesn't exist yet -> seed it
-      saveState(function(){ if (cb) cb(); });
+    if (publishInFlight){ publishPending = true; return; }
+    publishInFlight = true;
+    var html = buildPublishHtml();
+    claudeArtifactNS.publish(html).catch(function(err){
+      console.error("publish failed", err);
+    }).then(function(){
+      publishInFlight = false;
+      if (publishPending){ publishPending = false; persistState(); }
     });
   }
 
-  var saving = false, pendingSave = false;
+  // Every admin action calls saveState(render): render immediately (optimistic UI),
+  // publish in the background. Everyone with the page open — including read-only
+  // viewers — is reloaded to the published state automatically by the platform.
   function saveState(cb){
-    state.updatedAt = Date.now();
-    var payload = JSON.stringify(state);
-    if (!hasStorage){
-      memoryStore[STORAGE_KEY] = payload;
-      if (cb) cb();
-      return;
+    persistState();
+    if (cb) cb();
+  }
+
+  function initStorage(){
+    if (!window.claude || typeof window.claude.use !== "function"){
+      hasArtifact = false; loadLocalFallback(); render(); return;
     }
-    window.storage.set(STORAGE_KEY, payload, true).then(function(){
-      if (cb) cb();
-    }).catch(function(err){
-      console.error("save failed", err);
-      if (cb) cb();
+    window.claude.use("artifact").then(function(a){
+      hasArtifact = !!a;
+      claudeArtifactNS = a || null;
+      if (!hasArtifact) loadLocalFallback();
+      render();
+    }).catch(function(){
+      hasArtifact = false; loadLocalFallback(); render();
     });
   }
 
@@ -565,15 +600,6 @@
         extraUsed: [false,false,false], extraLog: []
       };
     }
-  }
-  function refreshAndRender(){
-    // Called right after loadState(): keeps the Live/Lab2/Lab1 cascade in sync,
-    // and persists that correction if this was the device that first noticed it
-    // (e.g. very first load of a fresh queue).
-    var before = state.liveTrackPid;
-    syncLiveTracking();
-    if (state.liveTrackPid !== before) saveState(render);
-    else render();
   }
   function remainingSeconds(){
     var t = state.timer;
@@ -989,23 +1015,24 @@
     });
   });
 
-  // ---------------- clock + polling ----------------
+  // ---------------- clock + realtime sync ----------------
   setInterval(function(){ document.getElementById("clock").textContent = fmtClock(); }, 1000);
 
-  // fast local tick for the live timer display (doesn't touch storage)
+  // fast local tick for the live timer display (doesn't touch the network)
   setInterval(function(){
     if (getLivePid()) renderHero();
   }, 250);
 
-  // poll shared storage every 2.5s to pick up changes from other devices
-  setInterval(function(){ loadState(refreshAndRender); }, 2500);
-
-  // initial load
-  if (!hasStorage){
-    var badge = document.getElementById("syncBadge");
-    if (badge) badge.style.display = "inline-block";
-  }
-  loadState(refreshAndRender);
+  // initial load — subscribes to realtime updates via the db capability;
+  // falls back to a local-only store (and shows the "Local only" badge)
+  // when db isn't available in this context.
+  initStorage();
+  setTimeout(function(){
+    if (!hasArtifact){
+      var badge = document.getElementById("syncBadge");
+      if (badge) badge.style.display = "inline-block";
+    }
+  }, 1200);
 })();
 </script>
 </body>
