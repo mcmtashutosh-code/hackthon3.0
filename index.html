@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InnoHack 3.0 — Live Presentation Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1220;
+    --panel:#121a2c;
+    --panel-alt:#182236;
+    --border:#26314a;
+    --gold:#d8a23b;
+    --gold-soft:#3a3220;
+    --green:#34a868;
+    --green-soft:#123423;
+    --amber:#e0a93e;
+    --amber-soft:#3a2f14;
+    --red:#e2464b;
+    --red-soft:#3a1518;
+    --text:#f5f7fa;
+    --muted:#8fa0bb;
+    --muted-2:#5d6c85;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',ui-monospace,'SF Mono',monospace;}
+  a{color:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#0e1626,#0b1220);
+    position:sticky;top:0;z-index:30;
+  }
+  .brand{display:flex;flex-direction:column;gap:2px;}
+  .brand .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--gold);font-weight:700;text-transform:uppercase;}
+  .brand h1{margin:0;font-size:18px;font-weight:800;letter-spacing:-.01em;}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .clock{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);}
+  .role-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .role-toggle button{
+    background:var(--panel);color:var(--muted);border:none;padding:8px 14px;font-size:12.5px;font-weight:600;
+  }
+  .role-toggle button.active{background:var(--gold);color:#221a08;}
+
+  /* ---------- Notice ribbon ---------- */
+  .notice{
+    display:none;align-items:center;gap:12px;
+    background:var(--gold-soft);border-bottom:1px solid var(--gold);
+    color:#f4dfa8;padding:10px 22px;font-size:14px;font-weight:600;
+  }
+  .notice.show{display:flex;}
+  .notice .tag{
+    flex-shrink:0;background:var(--gold);color:#221a08;font-size:10.5px;font-weight:800;
+    letter-spacing:.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase;
+  }
+  .notice .txt{flex:1;}
+  .notice .time{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#c9ad6f;flex-shrink:0;}
+  .notice button.dismiss{
+    background:transparent;border:1px solid #6b5726;color:#e8cf8f;border-radius:6px;
+    padding:4px 10px;font-size:11.5px;flex-shrink:0;
+  }
+
+  .award-banner{
+    display:none;background:linear-gradient(90deg,#3a2f14,#221a08);border-bottom:1px solid var(--gold);
+    color:var(--gold);padding:14px 22px;text-align:center;font-weight:800;font-size:15px;letter-spacing:.03em;
+  }
+  .award-banner.show{display:block;}
+  .lunch-banner{
+    display:none;background:linear-gradient(90deg,#123423,#0d2419);border-bottom:1px solid var(--green);
+    color:#8fe0b6;padding:14px 22px;text-align:center;font-weight:800;font-size:15px;letter-spacing:.03em;
+  }
+  .lunch-banner.show{display:block;}
+  .lock{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+
+  /* ---------- Custom modal (native prompt/confirm/alert are blocked in sandboxed previews) ---------- */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(6,10,18,.72);
+    align-items:center;justify-content:center;z-index:100;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:22px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal-box h3{margin:0 0 8px;font-size:15px;font-weight:700;}
+  .modal-box p{margin:0 0 14px;color:var(--muted);font-size:13.5px;line-height:1.5;}
+  .modal-box input{
+    width:100%;background:var(--panel-alt);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:14px;
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
+  .grid{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;}
+  @media (max-width:860px){.grid{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:18px 18px 20px;
+  }
+  .panel-title{
+    font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    font-weight:700;margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-title .count{color:var(--muted-2);font-weight:600;}
+
+  /* ---------- Hero: Now presenting ---------- */
+  .hero{
+    background:radial-gradient(circle at 30% 0%, #182036 0%, var(--panel) 60%);
+    border:1px solid var(--border);border-radius:12px;padding:26px 26px 22px;
+    position:relative;overflow:hidden;
+  }
+  .hero.live{border-color:var(--gold);}
+  .hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .hero-label{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:800;}
+  .hero-empty-label{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);font-weight:800;}
+  .phase-pill{
+    font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    padding:5px 11px;border-radius:20px;border:1px solid var(--border);color:var(--muted);
+  }
+  .phase-pill.presentation{background:var(--green-soft);color:var(--green);border-color:var(--green);}
+  .phase-pill.qna{background:var(--amber-soft);color:var(--amber);border-color:var(--amber);}
+  .phase-pill.over{background:var(--red-soft);color:var(--red);border-color:var(--red);}
+
+  .team-name{font-size:30px;font-weight:800;margin:14px 0 2px;letter-spacing:-.01em;line-height:1.15;}
+  .team-meta{color:var(--muted);font-size:14px;margin-bottom:18px;}
+  .team-meta .pid{color:var(--gold);font-family:'JetBrains Mono',monospace;font-weight:700;}
+
+  .timer-row{display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;margin:6px 0 18px;}
+  .timer-display{
+    font-family:'JetBrains Mono',monospace;font-weight:800;font-size:86px;line-height:1;
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  }
+  .timer-display.warn{color:var(--amber);}
+  .timer-display.over{color:var(--red);}
+  .timer-sub{color:var(--muted);font-size:13px;margin-bottom:10px;}
+  .extra-log{color:var(--muted-2);font-size:12px;}
+
+  .progress-track{height:6px;background:var(--panel-alt);border-radius:3px;overflow:hidden;margin-bottom:20px;}
+  .progress-fill{height:100%;background:var(--green);transition:width .4s linear;}
+  .progress-fill.qna{background:var(--amber);}
+  .progress-fill.over{background:var(--red);}
+
+  .empty-hero{padding:36px 0 10px;text-align:center;color:var(--muted-2);}
+  .empty-hero .big{font-size:17px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .btn{
+    border:1px solid var(--border);background:var(--panel-alt);color:var(--text);
+    padding:9px 15px;border-radius:8px;font-size:13px;font-weight:600;transition:.15s;
+  }
+  .btn:hover{border-color:var(--muted-2);}
+  .btn:disabled{opacity:.35;cursor:not-allowed;}
+  .btn.primary{background:var(--gold);color:#221a08;border-color:var(--gold);}
+  .btn.primary:hover{filter:brightness(1.08);}
+  .btn.success{background:var(--green);color:#06231a;border-color:var(--green);}
+  .btn.danger{background:transparent;color:var(--red);border-color:#5c2226;}
+  .btn.ghost{background:transparent;}
+  .btn.small{padding:6px 10px;font-size:12px;}
+
+  /* ---------- Queue slots ---------- */
+  .slot{
+    border:1px dashed var(--border);border-radius:10px;padding:14px;margin-bottom:12px;
+  }
+  .slot-head{display:flex;align-items:center;justify-content:between;gap:8px;margin-bottom:10px;}
+  .slot-head .lbl{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--muted);}
+  .slot-head .lbl.lab2{color:var(--green);}
+  .slot-head .lbl.lab1{color:var(--amber);}
+  .slot-empty{color:var(--muted-2);font-size:13px;padding:10px 2px;}
+  .team-chip{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;margin-bottom:8px;
+  }
+  .team-chip:last-child{margin-bottom:0;}
+  .team-chip .info .nm{font-weight:700;font-size:13.5px;}
+  .team-chip .info .sub{color:var(--muted-2);font-size:11.5px;font-family:'JetBrains Mono',monospace;margin-top:1px;}
+
+  /* ---------- Classrooms ---------- */
+  .seat-group{margin-bottom:16px;}
+  .seat-head{
+    display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--muted);
+    font-size:12.5px;font-weight:700;
+  }
+  .seat-head .dot{width:6px;height:6px;border-radius:50%;background:var(--muted-2);}
+  .chip-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .mini-chip{
+    display:flex;align-items:center;gap:8px;background:var(--panel-alt);border:1px solid var(--border);
+    border-radius:8px;padding:7px 10px;font-size:12.5px;
+  }
+  .mini-chip .pidb{font-family:'JetBrains Mono',monospace;color:var(--muted-2);font-size:11px;}
+  .mini-chip.done{opacity:.4;}
+  .mini-chip.active{border-color:var(--gold);}
+  .mini-chip button{
+    background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;
+    padding:3px 7px;font-size:11px;font-weight:600;
+  }
+  .mini-chip button:hover{border-color:var(--gold);color:var(--gold);}
+  .mini-chip .eta{color:var(--muted-2);font-size:11px;font-family:'JetBrains Mono',monospace;}
+  .mini-chip .extra-badge{color:var(--gold);font-size:10.5px;font-weight:700;}
+
+  /* ---------- Notice composer ---------- */
+  .composer{display:flex;gap:8px;margin-top:8px;}
+  .composer input{
+    flex:1;background:var(--panel-alt);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:9px 12px;font-size:13px;
+  }
+  .composer input::placeholder{color:var(--muted-2);}
+
+  .legend{color:var(--muted-2);font-size:12px;line-height:1.7;}
+  .legend b{color:var(--muted);}
+
+  .stats-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:2px;}
+  .stat{display:flex;flex-direction:column;}
+  .stat .n{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;}
+  .stat .l{font-size:11px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.06em;}
+
+  .section-gap{margin-top:18px;}
+  details.admintools{margin-top:18px;}
+  details.admintools summary{color:var(--muted-2);font-size:12px;cursor:pointer;}
+  .footer-note{text-align:center;color:var(--muted-2);font-size:11.5px;margin-top:30px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="eyebrow">Innovation &amp; Entrepreneurship Festival-2026</span>
+    <h1>InnoHack 3.0 — Presentation Control</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="clock" id="clock">--:--:--</span>
+    <span id="syncBadge" style="display:none;font-size:11px;color:var(--muted-2);border:1px solid var(--border);padding:4px 9px;border-radius:6px;">Local only — not synced</span>
+    <div class="role-toggle">
+      <button id="btnDisplay" class="active">Display</button>
+      <button id="btnControl">Control Room</button>
+    </div>
+  </div>
+</div>
+
+<div class="notice" id="noticeBar">
+  <span class="tag">Notice</span>
+  <span class="txt" id="noticeText"></span>
+  <span class="time" id="noticeTime"></span>
+  <button class="dismiss" id="btnDismissNotice">Dismiss</button>
+</div>
+
+<div class="award-banner" id="awardBanner">🏆 Award Ceremony — all teams please proceed to the Presentation Area</div>
+<div class="lunch-banner" id="lunchBanner">🍽️ Lunch Break — 1:00 PM to 1:30 PM</div>
+
+<div class="wrap">
+
+  <div class="grid">
+    <!-- HERO -->
+    <div class="hero" id="hero">
+      <div id="heroContent"></div>
+    </div>
+
+    <!-- QUEUE -->
+    <div>
+      <div class="panel">
+        <p class="panel-title">Queue <span class="count" id="queueCount"></span></p>
+        <div class="slot">
+          <div class="slot-head"><span class="lbl lab2">Lab 2 — 1st waiting</span></div>
+          <div id="lab2List"></div>
+        </div>
+        <div class="slot">
+          <div class="slot-head"><span class="lbl lab1">Lab 1 — 2nd waiting</span></div>
+          <div id="lab1List"></div>
+        </div>
+      </div>
+
+      <div class="panel section-gap" id="controlPanel" style="display:none;">
+        <p class="panel-title">Notice board</p>
+        <div class="composer">
+          <input id="noticeInput" type="text" placeholder="Type a notice for everyone…" maxlength="140">
+          <button class="btn primary small" id="btnPostNotice">Post</button>
+        </div>
+        <div class="legend section-gap">
+          <b>Timing:</b> Presentation 5–6 min · Q&amp;A 5–10 min · Extra time +2 / +2 / +1 min<br>
+          <b>Without extra time</b> a team takes ~15 min in total — ETAs below are estimated on this average.<br>
+          <b>Order:</b> teams are called strictly by P_ID. When a team is marked done, the next P_ID moves into
+          Live and waits for you to press <b>Start timer</b> before the clock runs.
+        </div>
+        <div class="btn-row section-gap">
+          <button class="btn" id="btnAward">Start Award Ceremony</button>
+          <button class="btn" id="btnLunch">Start Lunch Break</button>
+        </div>
+        <details class="admintools">
+          <summary>Admin tools — skipped teams &amp; emergency override</summary>
+          <div class="section-gap">
+            <p class="panel-title">Skipped teams</p>
+            <div id="skippedList"></div>
+          </div>
+          <div class="legend section-gap">
+            To call a team out of the normal P_ID order (e.g. to fix an error), use the
+            <b>"↑ Call next"</b> button next to any waiting team in the Classrooms list below.
+          </div>
+          <div class="btn-row section-gap">
+            <button class="btn danger small" id="btnReset">Reset entire queue</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel section-gap">
+        <p class="panel-title">Progress</p>
+        <div class="stats-row">
+          <div class="stat"><span class="n" id="statDone">0</span><span class="l">Completed</span></div>
+          <div class="stat"><span class="n" id="statWaiting">0</span><span class="l">Waiting</span></div>
+          <div class="stat"><span class="n" id="statSkipped">0</span><span class="l">Skipped</span></div>
+          <div class="stat"><span class="n" id="statTotal">31</span><span class="l">Total teams</span></div>
+        </div>
+      </div>
+
+      <div class="panel section-gap">
+        <p class="panel-title">Extra time given</p>
+        <div id="extraLogList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel section-gap">
+    <p class="panel-title">Classrooms <span class="count">seating areas</span></p>
+    <div id="seatGroups"></div>
+  </div>
+
+  <p class="footer-note">Microtek College of Management &amp; Technology (Sm Campus) — InnoHack 3.0, 18/09/2026</p>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3 id="modalTitle">Title</h3>
+    <p id="modalMessage">Message</p>
+    <input type="text" id="modalInput" style="display:none;">
+    <div class="modal-actions">
+      <button class="btn ghost small" id="modalCancel">Cancel</button>
+      <button class="btn primary small" id="modalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "innohack30-queue-state-v1";
+
+  var ROSTER = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
+
+  var PRESENTATION_PRESETS = [300, 360]; // 5, 6 min
+  var QNA_PRESETS = [300, 600]; // 5, 10 min
+  var EXTRA_CHUNKS = [120, 120, 60]; // 2,2,1 min
+
+  function defaultState(){
+    var teams = {};
+    ROSTER.forEach(function(t){
+      teams[t.pid] = {
+        pid: t.pid, teamId: t.teamId, teamName: t.teamName,
+        leader: t.leader, seat: t.seat, status: "pending", // pending | done | skipped
+        extraSec: 0, extraLog: []
+      };
+    });
+    return {
+      teams: teams,
+      queueOrder: ROSTER.map(function(t){ return t.pid; }), // calling sequence; strict P_ID order by default
+      liveTrackPid: null, // which team the current timer belongs to
+      timer: {
+        phase: "idle", running: false, endTime: null, remainingSec: 0,
+        durationSec: 0, presentationPreset: 360, qnaPreset: 600,
+        extraUsed: [false,false,false], extraLog: []
+      },
+      notice: null,
+      awardMode: false,
+      lunch: { active: false },
+      updatedAt: Date.now()
+    };
+  }
+
+  var state = defaultState();
+  var role = "display"; // display | control
+  var controlUnlocked = false; // in-memory only (no browser storage allowed in artifacts)
+  var ADMIN_PASSWORD = "innohack2026";
+  var AVG_TEAM_SEC = 900; // ~15 min per team without extra time, used for ETA estimates
+  var lastLoadedRaw = null;
+
+  // ---------------- storage ----------------
+  var hasStorage = !!(window.storage && typeof window.storage.get === "function" && typeof window.storage.set === "function");
+  var memoryStore = {}; // fallback when the artifact storage API isn't available (e.g. file opened outside Claude.ai)
+
+  function loadState(cb){
+    if (!hasStorage){
+      if (memoryStore[STORAGE_KEY]){
+        try { state = JSON.parse(memoryStore[STORAGE_KEY]); } catch(e){}
+      }
+      if (cb) cb();
+      return;
+    }
+    window.storage.get(STORAGE_KEY, true).then(function(res){
+      if (res && res.value) {
+        try {
+          var parsed = JSON.parse(res.value);
+          state = parsed;
+        } catch(e) {}
+      }
+      if (cb) cb();
+    }).catch(function(){
+      // key doesn't exist yet -> seed it
+      saveState(function(){ if (cb) cb(); });
+    });
+  }
+
+  var saving = false, pendingSave = false;
+  function saveState(cb){
+    state.updatedAt = Date.now();
+    var payload = JSON.stringify(state);
+    if (!hasStorage){
+      memoryStore[STORAGE_KEY] = payload;
+      if (cb) cb();
+      return;
+    }
+    window.storage.set(STORAGE_KEY, payload, true).then(function(){
+      if (cb) cb();
+    }).catch(function(err){
+      console.error("save failed", err);
+      if (cb) cb();
+    });
+  }
+
+  // ---------------- helpers ----------------
+  function fmtTime(sec){
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec/60), s = sec%60;
+    return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+  }
+  function fmtClock(){
+    var d = new Date();
+    function p(n){return (n<10?"0":"")+n;}
+    return p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+  }
+  function fmtClockTime(ms){
+    var d = new Date(ms);
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h>=12 ? "PM" : "AM";
+    var h12 = h%12; if (h12===0) h12=12;
+    return h12+":"+(m<10?"0":"")+m+" "+ampm;
+  }
+  function computeETAs(){
+    // Rough estimate of when each waiting team will be called, assuming
+    // ~15 min/team (AVG_TEAM_SEC) and the strict P_ID calling order.
+    var etas = {};
+    var cursor = Date.now();
+    var q = getActiveQueue();
+    if (q.length && state.liveTrackPid===q[0].pid) cursor += Math.max(0, remainingSeconds())*1000;
+    q.forEach(function(t, i){
+      if (i===0) return; // live team, no ETA needed
+      etas[t.pid] = cursor;
+      cursor += AVG_TEAM_SEC*1000;
+    });
+    return etas;
+  }
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  // ---------------- custom modal (native prompt/confirm/alert are blocked in sandboxed previews) ----------------
+  var modalOverlay = document.getElementById("modalOverlay");
+  var modalTitle = document.getElementById("modalTitle");
+  var modalMessage = document.getElementById("modalMessage");
+  var modalInput = document.getElementById("modalInput");
+  var modalOk = document.getElementById("modalOk");
+  var modalCancel = document.getElementById("modalCancel");
+  var modalResolve = null;
+
+  function closeModal(){
+    modalOverlay.classList.remove("show");
+    modalResolve = null;
+  }
+  function openModal(opts){
+    // opts: {title, message, showInput, placeholder, okLabel, cancelLabel, hideCancel}
+    modalTitle.textContent = opts.title || "";
+    modalMessage.textContent = opts.message || "";
+    modalOk.textContent = opts.okLabel || "OK";
+    modalCancel.textContent = opts.cancelLabel || "Cancel";
+    modalCancel.style.display = opts.hideCancel ? "none" : "inline-block";
+    if (opts.showInput){
+      modalInput.style.display = "block";
+      modalInput.type = opts.inputType || "text";
+      modalInput.value = "";
+      modalInput.placeholder = opts.placeholder || "";
+    } else {
+      modalInput.style.display = "none";
+    }
+    modalOverlay.classList.add("show");
+    if (opts.showInput) setTimeout(function(){ modalInput.focus(); }, 30);
+    return new Promise(function(resolve){ modalResolve = resolve; });
+  }
+  modalOk.addEventListener("click", function(){
+    var val = modalInput.style.display!=="none" ? modalInput.value : true;
+    var r = modalResolve; closeModal();
+    if (r) r(val);
+  });
+  modalCancel.addEventListener("click", function(){
+    var r = modalResolve; closeModal();
+    if (r) r(null);
+  });
+  modalInput.addEventListener("keydown", function(e){
+    if (e.key==="Enter"){ modalOk.click(); }
+    if (e.key==="Escape"){ modalCancel.click(); }
+  });
+  function askText(title, message, placeholder, inputType){
+    return openModal({title:title, message:message, showInput:true, placeholder:placeholder, inputType:inputType});
+  }
+  function askConfirm(title, message){
+    return openModal({title:title, message:message, okLabel:"Confirm"});
+  }
+  function showAlert(title, message){
+    return openModal({title:title, message:message, hideCancel:true});
+  }
+  function getActiveQueue(){
+    // teams still pending, in the calling order defined by queueOrder
+    return state.queueOrder
+      .map(function(pid){ return state.teams[pid]; })
+      .filter(function(t){ return t && t.status==="pending"; });
+  }
+  function getLivePid(){ var q=getActiveQueue(); return q.length ? q[0].pid : null; }
+  function getLab2Pid(){ var q=getActiveQueue(); return q.length>1 ? q[1].pid : null; }
+  function getLab1Pid(){ var q=getActiveQueue(); return q.length>2 ? q[2].pid : null; }
+  function getClassroomTeams(){ return getActiveQueue().slice(3); }
+  function stageOf(pid){
+    if (state.teams[pid] && state.teams[pid].status!=="pending") return state.teams[pid].status; // done | skipped
+    if (pid===getLivePid()) return "live";
+    if (pid===getLab2Pid()) return "lab2";
+    if (pid===getLab1Pid()) return "lab1";
+    return "classroom";
+  }
+  function syncLiveTracking(){
+    // Whenever the live team changes (cascade after done/skip/reorder), reset the
+    // timer to "awaiting" for the new team so it never auto-starts without permission.
+    var liveP = getLivePid();
+    if (liveP !== state.liveTrackPid){
+      state.liveTrackPid = liveP;
+      state.timer = {
+        phase: liveP ? "awaiting" : "idle",
+        running: false, endTime: null, remainingSec: 0, durationSec: 0,
+        presentationPreset: state.timer.presentationPreset || 360,
+        qnaPreset: state.timer.qnaPreset || 600,
+        extraUsed: [false,false,false], extraLog: []
+      };
+    }
+  }
+  function refreshAndRender(){
+    // Called right after loadState(): keeps the Live/Lab2/Lab1 cascade in sync,
+    // and persists that correction if this was the device that first noticed it
+    // (e.g. very first load of a fresh queue).
+    var before = state.liveTrackPid;
+    syncLiveTracking();
+    if (state.liveTrackPid !== before) saveState(render);
+    else render();
+  }
+  function remainingSeconds(){
+    var t = state.timer;
+    if (t.running && t.endTime) {
+      return (t.endTime - Date.now())/1000;
+    }
+    return t.remainingSec || 0;
+  }
+
+  // ---------------- admin actions ----------------
+  function startTimer(){
+    var liveP = getLivePid();
+    if (!liveP) return;
+    syncLiveTracking(); // safety: make sure timer object belongs to the right team
+    var t = state.timer;
+    t.phase = "presentation";
+    t.durationSec = t.presentationPreset || 360;
+    t.remainingSec = t.presentationPreset || 360;
+    t.running = true;
+    t.endTime = Date.now() + (t.remainingSec*1000);
+    saveState(render);
+  }
+  function setPreset(kind, sec){
+    if (kind==="presentation") state.timer.presentationPreset = sec;
+    else state.timer.qnaPreset = sec;
+    if (state.timer.phase==="qna" && kind==="qna" && !state.timer.running){
+      state.timer.remainingSec = sec; state.timer.durationSec = sec;
+    }
+    saveState(render);
+  }
+  function toggleRun(){
+    var t = state.timer;
+    if (t.phase!=="presentation" && t.phase!=="qna") return;
+    if (t.running){
+      t.remainingSec = Math.max(0, (t.endTime - Date.now())/1000);
+      t.running = false; t.endTime = null;
+    } else {
+      t.endTime = Date.now() + (t.remainingSec*1000);
+      t.running = true;
+    }
+    saveState(render);
+  }
+  function nextPhase(){
+    var t = state.timer;
+    if (t.phase==="presentation"){
+      t.phase = "qna";
+      t.remainingSec = t.qnaPreset || 600;
+      t.durationSec = t.qnaPreset || 600;
+      t.running = false; t.endTime = null;
+      saveState(render);
+    } else if (t.phase==="qna"){
+      markDoneAndNext();
+    }
+  }
+  function addExtra(idx){
+    var t = state.timer;
+    if (t.extraUsed[idx]) return;
+    if (t.phase!=="presentation" && t.phase!=="qna") return;
+    t.extraUsed[idx] = true;
+    var sec = EXTRA_CHUNKS[idx];
+    if (t.running) t.endTime += sec*1000;
+    else t.remainingSec += sec;
+    t.durationSec += sec;
+    t.extraLog.push("+"+Math.round(sec/60)+" min");
+    var liveP = getLivePid();
+    if (liveP && state.teams[liveP]){
+      var team = state.teams[liveP];
+      team.extraSec = (team.extraSec||0) + sec;
+      team.extraLog = (team.extraLog||[]).concat(["+"+Math.round(sec/60)+" min"]);
+    }
+    saveState(render);
+  }
+  function markDoneAndNext(){
+    var liveP = getLivePid();
+    if (liveP){
+      state.teams[liveP].status = "done";
+    }
+    syncLiveTracking(); // cascades P_ID+1 into Live, next into Lab2, next into Lab1
+    saveState(render);
+  }
+  function skipCurrentTeam(){
+    var liveP = getLivePid();
+    if (!liveP) return;
+    state.teams[liveP].status = "skipped";
+    // move to the end of the calling order so it doesn't block anyone if re-queued later
+    state.queueOrder = state.queueOrder.filter(function(p){ return p!==liveP; }).concat([liveP]);
+    syncLiveTracking();
+    saveState(render);
+  }
+  function requeueTeam(pid){
+    pid = parseInt(pid,10);
+    if (!state.teams[pid]) return;
+    state.teams[pid].status = "pending";
+    syncLiveTracking();
+    saveState(render);
+  }
+  function moveToFront(pid){
+    // Emergency override: force a specific team to be called next (Live),
+    // for cases like a wrong call, a technical error, or an out-of-order arrival.
+    pid = parseInt(pid,10);
+    if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
+    state.queueOrder = [pid].concat(state.queueOrder.filter(function(p){ return p!==pid; }));
+    syncLiveTracking();
+    saveState(render);
+  }
+  function postNotice(){
+    var input = document.getElementById("noticeInput");
+    var val = input.value.trim();
+    if (!val) return;
+    state.notice = { text: val, ts: Date.now() };
+    input.value = "";
+    saveState(render);
+  }
+  function dismissNotice(){
+    state.notice = null;
+    saveState(render);
+  }
+  function startAward(){
+    state.awardMode = true;
+    state.notice = { text: "Award Ceremony — please proceed to the Presentation Area", ts: Date.now() };
+    saveState(render);
+  }
+  function toggleLunch(){
+    state.lunch.active = !state.lunch.active;
+    saveState(render);
+  }
+  function resetAll(){
+    state = defaultState();
+    saveState(render);
+  }
+
+  // ---------------- render ----------------
+  function render(){
+    renderNotice();
+    renderHero();
+    renderQueue();
+    renderSeats();
+    renderStats();
+    renderExtraLog();
+    renderSkippedList();
+    document.getElementById("controlPanel").style.display = role==="control" ? "block" : "none";
+    document.getElementById("btnLunch").textContent = state.lunch.active ? "End Lunch Break" : "Start Lunch Break";
+  }
+
+  function renderNotice(){
+    var bar = document.getElementById("noticeBar");
+    var award = document.getElementById("awardBanner");
+    var lunch = document.getElementById("lunchBanner");
+    award.classList.toggle("show", !!state.awardMode);
+    lunch.classList.toggle("show", !!(state.lunch && state.lunch.active));
+    if (state.notice){
+      bar.classList.add("show");
+      document.getElementById("noticeText").textContent = state.notice.text;
+      var secs = Math.round((Date.now()-state.notice.ts)/1000);
+      var ago = secs<60 ? secs+"s ago" : Math.round(secs/60)+"m ago";
+      document.getElementById("noticeTime").textContent = ago;
+    } else {
+      bar.classList.remove("show");
+    }
+    document.getElementById("btnDismissNotice").style.display = role==="control" ? "inline-block" : "none";
+  }
+
+  function renderHero(){
+    var hero = document.getElementById("hero");
+    var content = document.getElementById("heroContent");
+    var t = state.timer;
+    var pid = getLivePid();
+
+    if (!pid || !state.teams[pid]){
+      hero.classList.remove("live");
+      var allDone = Object.values(state.teams).every(function(tm){ return tm.status!=="pending"; });
+      content.innerHTML =
+        '<div class="hero-top"><span class="hero-empty-label">Live</span></div>'+
+        '<div class="empty-hero"><div class="big">'+(allDone ? "All teams have presented" : "No team is up right now")+'</div>'+
+        (allDone ? "Presentations are complete." : "Waiting for the queue…")+
+        '</div>';
+      return;
+    }
+
+    hero.classList.add("live");
+    var team = state.teams[pid];
+    var awaiting = t.phase==="awaiting";
+    var rem = remainingSeconds();
+    var over = !awaiting && rem <= 0;
+    var pct = (!awaiting && t.durationSec>0) ? Math.max(0, Math.min(100, 100*(1-(rem/t.durationSec)))) : 0;
+    var phaseClass = awaiting ? "" : (over ? "over" : (t.phase==="qna" ? "qna" : "presentation"));
+    var phaseLabel = awaiting ? "Awaiting start" : (over ? "Overtime" : (t.phase==="qna" ? "Questions & Answers" : "Presentation"));
+    var timerClass = over ? "over" : (!awaiting && rem<=30 ? "warn" : "");
+
+    var extraBtns = "";
+    if (role==="control" && !awaiting){
+      EXTRA_CHUNKS.forEach(function(sec, i){
+        var used = t.extraUsed[i];
+        extraBtns += '<button class="btn small" data-action="extra" data-idx="'+i+'" '+(used?"disabled":"")+'>+'+Math.round(sec/60)+' min'+(used?" ✓":"")+'</button>';
+      });
+    }
+
+    var controls = "";
+    if (role==="control"){
+      if (awaiting){
+        controls =
+          '<div class="btn-row">'+
+            '<button class="btn primary" data-action="startTimer">Start timer — permission to begin</button>'+
+            '<button class="btn danger" data-action="skip">Skip this team</button>'+
+          '</div>'+
+          '<div class="btn-row" style="margin-top:8px;">'+
+            '<span class="timer-sub" style="align-self:center;">Presentation length:</span>'+
+            PRESENTATION_PRESETS.map(function(s){
+              return '<button class="btn small'+(t.presentationPreset===s?" primary":"")+'" data-action="presetP" data-sec="'+s+'">'+Math.round(s/60)+' min</button>';
+            }).join("")+
+          '</div>';
+      } else {
+        controls =
+          '<div class="btn-row">'+
+            '<button class="btn primary" data-action="toggleRun">'+(t.running?"Pause":"Resume")+'</button>'+
+            '<button class="btn" data-action="nextPhase">'+(t.phase==="presentation"?"Move to Q&A":"Mark done — call next")+'</button>'+
+            extraBtns+
+            '<button class="btn danger" data-action="endDoneNow">End now (mark done)</button>'+
+          '</div>';
+        if (!t.running && t.phase==="qna"){
+          controls += '<div class="btn-row" style="margin-top:8px;">'+
+            '<span class="timer-sub" style="align-self:center;">Q&amp;A length:</span>'+
+            QNA_PRESETS.map(function(s){
+              return '<button class="btn small'+(t.qnaPreset===s?" primary":"")+'" data-action="presetQ" data-sec="'+s+'">'+Math.round(s/60)+' min</button>';
+            }).join("")+
+            '</div>';
+        }
+      }
+    }
+
+    var timerHtml = awaiting
+      ? '<div class="timer-display" style="font-size:44px;color:var(--muted);">Ready</div>'
+      : '<div class="timer-display '+timerClass+'">'+(over?"+":"")+ fmtTime(Math.abs(rem)) +'</div>';
+
+    content.innerHTML =
+      '<div class="hero-top">'+
+        '<span class="hero-label">Live</span>'+
+        '<span class="phase-pill '+phaseClass+'">'+phaseLabel+'</span>'+
+      '</div>'+
+      '<div class="team-name">'+esc(team.teamName)+'</div>'+
+      '<div class="team-meta"><span class="pid">P_ID '+team.pid+' · '+esc(team.teamId)+'</span> · Led by '+esc(team.leader)+' · Seat '+esc(team.seat)+'</div>'+
+      '<div class="timer-row">'+
+        timerHtml+
+        '<div><div class="timer-sub">'+(awaiting ? (role==="control" ? "Waiting for your OK to start" : "Waiting to begin") : (t.running?"Running":"Paused"))+'</div>'+
+        (t.extraLog.length ? '<div class="extra-log">Extra added: '+t.extraLog.join(", ")+'</div>' : '')+
+        '</div>'+
+      '</div>'+
+      (awaiting ? '' : '<div class="progress-track"><div class="progress-fill '+(over?"over":(t.phase==="qna"?"qna":""))+'" style="width:'+pct+'%;"></div></div>')+
+      controls;
+  }
+
+  function renderQueue(){
+    var lab2Pid = getLab2Pid();
+    var lab1Pid = getLab1Pid();
+    var etas = computeETAs();
+    var count = (lab1Pid?1:0) + (lab2Pid?1:0);
+    document.getElementById("queueCount").textContent = count+" waiting outside";
+
+    function chip(pid, etaNote){
+      var team = state.teams[pid];
+      var eta = etas[pid] ? '<div class="sub" style="margin-top:2px;">~ETA '+fmtClockTime(etas[pid])+'</div>' : "";
+      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(team.teamName)+'</div>'+
+        '<div class="sub">P_ID '+team.pid+' · '+esc(team.teamId)+' · '+esc(team.leader)+'</div>'+eta+'</div></div>';
+    }
+
+    document.getElementById("lab2List").innerHTML = lab2Pid ? chip(lab2Pid) : '<div class="slot-empty">No team waiting here</div>';
+    document.getElementById("lab1List").innerHTML = lab1Pid ? chip(lab1Pid) : '<div class="slot-empty">No team waiting here</div>';
+  }
+
+  function renderSeats(){
+    var groups = {};
+    Object.values(state.teams).forEach(function(t){
+      groups[t.seat] = groups[t.seat] || [];
+      groups[t.seat].push(t);
+    });
+    var seatNames = Object.keys(groups).sort();
+    var etas = computeETAs();
+    var livePid = getLivePid(), lab2Pid = getLab2Pid(), lab1Pid = getLab1Pid();
+    var html = "";
+    seatNames.forEach(function(seat){
+      var list = groups[seat].sort(function(a,b){return a.pid-b.pid;});
+      html += '<div class="seat-group"><div class="seat-head"><span class="dot"></span>'+esc(seat)+
+        ' <span style="color:var(--muted-2);font-weight:500;">('+list.length+' teams)</span></div><div class="chip-grid">';
+      list.forEach(function(t){
+        var cls = "mini-chip";
+        var stageLabel = "";
+        if (t.status==="done"){ cls += " done"; stageLabel = " · Done"; }
+        else if (t.status==="skipped"){ cls += " done"; stageLabel = " · Skipped"; }
+        else if (t.pid===livePid){ cls += " active"; stageLabel = " · Live"; }
+        else if (t.pid===lab2Pid){ stageLabel = " · Lab 2"; }
+        else if (t.pid===lab1Pid){ stageLabel = " · Lab 1"; }
+        var etaTxt = "";
+        if (t.status==="pending" && t.pid!==livePid && t.pid!==lab2Pid && t.pid!==lab1Pid && etas[t.pid]){
+          etaTxt = ' <span class="eta">~ETA '+fmtClockTime(etas[t.pid])+'</span>';
+        }
+        var extraBadge = t.extraSec>0 ? ' <span class="extra-badge">+'+Math.round(t.extraSec/60)+'m</span>' : "";
+        var overrideBtn = "";
+        if (role==="control" && t.status==="pending" && t.pid!==livePid){
+          overrideBtn = '<button data-action="moveToFront" data-pid="'+t.pid+'" title="Emergency override: call this team next">↑ Call next</button>';
+        }
+        html += '<span class="'+cls+'"><span class="pidb">P'+t.pid+' · '+esc(t.teamId)+'</span>'+esc(t.teamName)+stageLabel+extraBadge+etaTxt+overrideBtn+'</span>';
+      });
+      html += '</div></div>';
+    });
+    document.getElementById("seatGroups").innerHTML = html;
+  }
+
+  function renderExtraLog(){
+    var withExtra = Object.values(state.teams).filter(function(t){return t.extraSec>0;})
+      .sort(function(a,b){return a.pid-b.pid;});
+    var el = document.getElementById("extraLogList");
+    if (!withExtra.length){
+      el.innerHTML = '<div class="slot-empty">No extra time given yet</div>';
+      return;
+    }
+    el.innerHTML = withExtra.map(function(t){
+      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(t.teamName)+'</div>'+
+        '<div class="sub">P_ID '+t.pid+' · '+esc(t.teamId)+' · '+(t.extraLog||[]).join(", ")+'</div></div>'+
+        '<div class="pidb mono" style="color:var(--gold);font-weight:700;">+'+Math.round(t.extraSec/60)+' min</div></div>';
+    }).join("");
+  }
+
+  function renderSkippedList(){
+    var el = document.getElementById("skippedList");
+    if (!el) return;
+    var skipped = Object.values(state.teams).filter(function(t){return t.status==="skipped";})
+      .sort(function(a,b){return a.pid-b.pid;});
+    if (!skipped.length){
+      el.innerHTML = '<div class="slot-empty">No skipped teams</div>';
+      return;
+    }
+    el.innerHTML = skipped.map(function(t){
+      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(t.teamName)+'</div>'+
+        '<div class="sub">P_ID '+t.pid+' · '+esc(t.teamId)+' · '+esc(t.leader)+'</div></div>'+
+        '<button class="btn small" data-action="requeue" data-pid="'+t.pid+'">Re-add to queue</button></div>';
+    }).join("");
+  }
+
+  function renderStats(){
+    var all = Object.values(state.teams);
+    var done = all.filter(function(t){return t.status==="done";}).length;
+    var skipped = all.filter(function(t){return t.status==="skipped";}).length;
+    var waiting = getClassroomTeams().length;
+    document.getElementById("statDone").textContent = done;
+    document.getElementById("statWaiting").textContent = waiting;
+    document.getElementById("statTotal").textContent = all.length;
+    var skipEl = document.getElementById("statSkipped");
+    if (skipEl) skipEl.textContent = skipped;
+  }
+
+  // ---------------- events (delegation) ----------------
+  document.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    var action = btn.getAttribute("data-action");
+    var pid = btn.getAttribute("data-pid");
+    switch(action){
+      case "startTimer": startTimer(); break;
+      case "toggleRun": toggleRun(); break;
+      case "nextPhase": nextPhase(); break;
+      case "extra": addExtra(parseInt(btn.getAttribute("data-idx"),10)); break;
+      case "skip":
+        askConfirm("Skip this team", "Mark the current team as skipped (e.g. absent or a call error)? They can be re-added from Admin tools later.").then(function(ok){
+          if (ok) skipCurrentTeam();
+        });
+        break;
+      case "endDoneNow":
+        askConfirm("End now", "Mark this team as done and call the next one now?").then(function(ok){
+          if (ok) markDoneAndNext();
+        });
+        break;
+      case "requeue": requeueTeam(pid); break;
+      case "moveToFront":
+        askConfirm("Call this team next (override)", "This overrides the normal P_ID order and makes this team Live next. Use this only to fix an error. Continue?").then(function(ok){
+          if (ok) moveToFront(pid);
+        });
+        break;
+      case "presetP": setPreset("presentation", parseInt(btn.getAttribute("data-sec"),10)); break;
+      case "presetQ": setPreset("qna", parseInt(btn.getAttribute("data-sec"),10)); break;
+    }
+  });
+
+  document.getElementById("btnPostNotice").addEventListener("click", postNotice);
+  document.getElementById("noticeInput").addEventListener("keydown", function(e){ if(e.key==="Enter") postNotice(); });
+  document.getElementById("btnDismissNotice").addEventListener("click", dismissNotice);
+  document.getElementById("btnAward").addEventListener("click", startAward);
+  document.getElementById("btnLunch").addEventListener("click", toggleLunch);
+  document.getElementById("btnReset").addEventListener("click", function(){
+    askConfirm("Reset entire queue", "This will reset all 31 teams back to their classrooms and clear all timers, extra time, and notices. Are you sure?").then(function(ok){
+      if (ok) resetAll();
+    });
+  });
+
+  document.getElementById("btnDisplay").addEventListener("click", function(){
+    role="display";
+    this.classList.add("active");
+    document.getElementById("btnControl").classList.remove("active");
+    render();
+  });
+  document.getElementById("btnControl").addEventListener("click", function(){
+    var self = this;
+    function unlock(){
+      role="control"; controlUnlocked = true;
+      self.classList.add("active");
+      document.getElementById("btnDisplay").classList.remove("active");
+      render();
+    }
+    if (controlUnlocked){ unlock(); return; }
+    askText("Control room access", "Enter the control room password:", "Password", "password").then(function(pass){
+      if (pass === null) return; // cancelled
+      if (pass === ADMIN_PASSWORD){ unlock(); }
+      else { showAlert("Incorrect password", "That password isn't correct. Please try again."); }
+    });
+  });
+
+  // ---------------- clock + polling ----------------
+  setInterval(function(){ document.getElementById("clock").textContent = fmtClock(); }, 1000);
+
+  // fast local tick for the live timer display (doesn't touch storage)
+  setInterval(function(){
+    if (getLivePid()) renderHero();
+  }, 250);
+
+  // poll shared storage every 2.5s to pick up changes from other devices
+  setInterval(function(){ loadState(refreshAndRender); }, 2500);
+
+  // initial load
+  if (!hasStorage){
+    var badge = document.getElementById("syncBadge");
+    if (badge) badge.style.display = "inline-block";
+  }
+  loadState(refreshAndRender);
+})();
+</script>
+</body>
+</html>
