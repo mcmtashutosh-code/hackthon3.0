@@ -203,6 +203,7 @@
   }
   .mini-chip .pidb{font-family:'JetBrains Mono',monospace;color:var(--muted-2);font-size:11px;}
   .mini-chip.done{opacity:.4;}
+  .mini-chip.absent{opacity:0.3;text-decoration:line-through;border-color:var(--red);}
   .mini-chip.active{border-color:var(--gold);}
   .mini-chip button{
     background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;
@@ -243,7 +244,7 @@
   </div>
   <div class="topbar-right">
     <span class="clock" id="clock">--:--:--</span>
-    <span id="syncBadge" style="font-size:11px;color:var(--green);border:1px solid var(--green);padding:4px 9px;border-radius:6px;">● Live Synced (Auto 3s)</span>
+    <span id="syncBadge" style="font-size:11px;color:var(--green);border:1px solid var(--green);padding:4px 9px;border-radius:6px;">● Multi-Screen Sync Active</span>
     <div class="role-toggle">
       <button id="btnDisplay" class="active">Display</button>
       <button id="btnControl">Control Room</button>
@@ -290,23 +291,25 @@
         </div>
         <div class="legend section-gap">
           <b>Timing:</b> Presentation 5–6 min · Q&amp;A 5–10 min · Extra time +2 / +2 / +1 min<br>
-          <b>Without extra time</b> a team takes ~15 min in total — ETAs below are estimated on this average.<br>
-          <b>Order:</b> teams are called strictly by P_ID. When a team is marked done, the next P_ID moves into
-          Live and waits for you to press <b>Start timer</b> before the clock runs.
+          <b>Default Order:</b> Strict P_ID wise calling sequence. Admin can override or change order anytime.
         </div>
         <div class="btn-row section-gap">
           <button class="btn" id="btnAward">Start Award Ceremony</button>
           <button class="btn" id="btnLunch">Start Lunch Break</button>
         </div>
         <details class="admintools">
-          <summary>Admin tools — skipped teams &amp; emergency override</summary>
+          <summary>Admin tools — Completed, Absent &amp; Skipped Teams</summary>
           <div class="section-gap">
-            <p class="panel-title">Skipped teams</p>
-            <div id="skippedList"></div>
+            <p class="panel-title">Completed / Done Teams (Undo / Revert)</p>
+            <div id="completedList"></div>
           </div>
-          <div class="legend section-gap">
-            To call a team out of the normal P_ID order (e.g. to fix an error), use the
-            <b>"↑ Call next"</b> button next to any waiting team in the Classrooms list below.
+          <div class="section-gap">
+            <p class="panel-title">Absent Teams</p>
+            <div id="absentList"></div>
+          </div>
+          <div class="section-gap">
+            <p class="panel-title">Skipped Teams</p>
+            <div id="skippedList"></div>
           </div>
           <div class="btn-row section-gap">
             <button class="btn danger small" id="btnReset">Reset entire queue</button>
@@ -319,7 +322,7 @@
         <div class="stats-row">
           <div class="stat"><span class="n" id="statDone">0</span><span class="l">Completed</span></div>
           <div class="stat"><span class="n" id="statWaiting">0</span><span class="l">Waiting</span></div>
-          <div class="stat"><span class="n" id="statSkipped">0</span><span class="l">Skipped</span></div>
+          <div class="stat"><span class="n" id="statAbsent">0</span><span class="l">Absent</span></div>
           <div class="stat"><span class="n" id="statTotal">31</span><span class="l">Total teams</span></div>
         </div>
       </div>
@@ -332,7 +335,7 @@
   </div>
 
   <div class="panel section-gap">
-    <p class="panel-title">Classrooms <span class="count">seating areas</span></p>
+    <p class="panel-title">Classrooms <span class="count">seating areas &amp; actions</span></p>
     <div id="seatGroups"></div>
   </div>
 
@@ -355,7 +358,7 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = "innohack30-queue-state-v2";
+  var STORAGE_KEY = "innohack30-queue-state-v3";
 
   var ROSTER = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
 
@@ -368,7 +371,7 @@
     ROSTER.forEach(function(t){
       teams[t.pid] = {
         pid: t.pid, teamId: t.teamId, teamName: t.teamName,
-        leader: t.leader, seat: t.seat, status: "pending",
+        leader: t.leader, seat: t.seat, status: "pending", // pending | done | skipped | absent
         extraSec: 0, extraLog: []
       };
     });
@@ -416,7 +419,6 @@
     if (cb) cb();
   }
 
-  // Helpers
   function fmtTime(sec){
     sec = Math.max(0, Math.round(sec));
     var m = Math.floor(sec/60), s = sec%60;
@@ -617,10 +619,21 @@
     syncLiveTracking();
     saveState(render);
   }
+  function markAbsent(pid){
+    pid = parseInt(pid, 10);
+    if (!state.teams[pid]) return;
+    state.teams[pid].status = "absent";
+    syncLiveTracking();
+    saveState(render);
+  }
   function requeueTeam(pid){
     pid = parseInt(pid,10);
     if (!state.teams[pid]) return;
     state.teams[pid].status = "pending";
+    // Place back to queue order if not present
+    if (!state.queueOrder.includes(pid)){
+      state.queueOrder.push(pid);
+    }
     syncLiveTracking();
     saveState(render);
   }
@@ -665,6 +678,8 @@
     renderSeats();
     renderStats();
     renderExtraLog();
+    renderCompletedList();
+    renderAbsentList();
     renderSkippedList();
     document.getElementById("controlPanel").style.display = role==="control" ? "block" : "none";
     document.getElementById("btnLunch").textContent = state.lunch.active ? "End Lunch Break" : "Start Lunch Break";
@@ -730,6 +745,7 @@
           '<div class="btn-row">'+
             '<button class="btn primary" data-action="startTimer">Start timer — permission to begin</button>'+
             '<button class="btn danger" data-action="skip">Skip this team</button>'+
+            '<button class="btn danger" data-action="absent" data-pid="'+team.pid+'">Mark Absent</button>'+
           '</div>'+
           '<div class="btn-row" style="margin-top:8px;">'+
             '<span class="timer-sub" style="align-self:center;">Presentation length:</span>'+
@@ -814,23 +830,60 @@
         var stageLabel = "";
         if (t.status==="done"){ cls += " done"; stageLabel = " · Done"; }
         else if (t.status==="skipped"){ cls += " done"; stageLabel = " · Skipped"; }
+        else if (t.status==="absent"){ cls += " absent"; stageLabel = " · Absent"; }
         else if (t.pid===livePid){ cls += " active"; stageLabel = " · Live"; }
         else if (t.pid===lab2Pid){ stageLabel = " · Lab 2"; }
         else if (t.pid===lab1Pid){ stageLabel = " · Lab 1"; }
+        
         var etaTxt = "";
         if (t.status==="pending" && t.pid!==livePid && t.pid!==lab2Pid && t.pid!==lab1Pid && etas[t.pid]){
           etaTxt = ' <span class="eta">~ETA '+fmtClockTime(etas[t.pid])+'</span>';
         }
         var extraBadge = t.extraSec>0 ? ' <span class="extra-badge">+'+Math.round(t.extraSec/60)+'m</span>' : "";
-        var overrideBtn = "";
-        if (role==="control" && t.status==="pending" && t.pid!==livePid){
-          overrideBtn = '<button data-action="moveToFront" data-pid="'+t.pid+'" title="Emergency override: call this team next">↑ Call next</button>';
+        var adminActionBtns = "";
+        if (role==="control" && t.status==="pending"){
+          if (t.pid!==livePid){
+            adminActionBtns += '<button data-action="moveToFront" data-pid="'+t.pid+'" title="Call next">↑ Call</button>';
+          }
+          adminActionBtns += '<button data-action="absent" data-pid="'+t.pid+'" title="Mark Absent">Absent</button>';
         }
-        html += '<span class="'+cls+'"><span class="pidb">P'+t.pid+' · '+esc(t.teamId)+'</span>'+esc(t.teamName)+stageLabel+extraBadge+etaTxt+overrideBtn+'</span>';
+        html += '<span class="'+cls+'"><span class="pidb">P'+t.pid+' · '+esc(t.teamId)+'</span>'+esc(t.teamName)+stageLabel+extraBadge+etaTxt+adminActionBtns+'</span>';
       });
       html += '</div></div>';
     });
     document.getElementById("seatGroups").innerHTML = html;
+  }
+
+  function renderCompletedList(){
+    var el = document.getElementById("completedList");
+    if (!el) return;
+    var completed = Object.values(state.teams).filter(function(t){return t.status==="done";})
+      .sort(function(a,b){return a.pid-b.pid;});
+    if (!completed.length){
+      el.innerHTML = '<div class="slot-empty">No completed teams yet</div>';
+      return;
+    }
+    el.innerHTML = completed.map(function(t){
+      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(t.teamName)+'</div>'+
+        '<div class="sub">P_ID '+t.pid+' · '+esc(t.teamId)+'</div></div>'+
+        '<button class="btn small" data-action="requeue" data-pid="'+t.pid+'">Undo / Re-queue</button></div>';
+    }).join("");
+  }
+
+  function renderAbsentList(){
+    var el = document.getElementById("absentList");
+    if (!el) return;
+    var absents = Object.values(state.teams).filter(function(t){return t.status==="absent";})
+      .sort(function(a,b){return a.pid-b.pid;});
+    if (!absents.length){
+      el.innerHTML = '<div class="slot-empty">No absent teams</div>';
+      return;
+    }
+    el.innerHTML = absents.map(function(t){
+      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(t.teamName)+'</div>'+
+        '<div class="sub">P_ID '+t.pid+' · '+esc(t.teamId)+'</div></div>'+
+        '<button class="btn small" data-action="requeue" data-pid="'+t.pid+'">Restore team</button></div>';
+    }).join("");
   }
 
   function renderExtraLog(){
@@ -867,13 +920,13 @@
   function renderStats(){
     var all = Object.values(state.teams);
     var done = all.filter(function(t){return t.status==="done";}).length;
-    var skipped = all.filter(function(t){return t.status==="skipped";}).length;
+    var absent = all.filter(function(t){return t.status==="absent";}).length;
     var waiting = getClassroomTeams().length;
     document.getElementById("statDone").textContent = done;
     document.getElementById("statWaiting").textContent = waiting;
+    var absEl = document.getElementById("statAbsent");
+    if (absEl) absEl.textContent = absent;
     document.getElementById("statTotal").textContent = all.length;
-    var skipEl = document.getElementById("statSkipped");
-    if (skipEl) skipEl.textContent = skipped;
   }
 
   // Event Listeners
@@ -890,6 +943,11 @@
       case "skip":
         askConfirm("Skip this team", "Mark the current team as skipped?").then(function(ok){
           if (ok) skipCurrentTeam();
+        });
+        break;
+      case "absent":
+        askConfirm("Mark Absent", "Mark this team as Absent?").then(function(ok){
+          if (ok) markAbsent(pid || getLivePid());
         });
         break;
       case "endDoneNow":
@@ -941,22 +999,21 @@
     });
   });
 
-  // Clocks & Auto-Sync Engine (Har 3 second me LocalStorage check karega)
+  // Clocks & Sync Engines
   setInterval(function(){ document.getElementById("clock").textContent = fmtClock(); }, 1000);
 
-  // Fast local timer refresh
   setInterval(function(){
     if (getLivePid()) renderHero();
   }, 250);
 
-  // Auto-Sync Polling (Har 3 second mein saari screens update ho jayengi)
+  // Auto-sync polling every 2 seconds across all displays/systems
   setInterval(function(){
     var latestState = loadStateFromStorage();
     if (latestState && latestState.updatedAt && latestState.updatedAt > (state.updatedAt || 0)) {
       state = latestState;
       render();
     }
-  }, 3000);
+  }, 2000);
 
   // Initial render
   render();
