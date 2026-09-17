@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InnoHack 3.0 — Live Presentation Control</title>
+<title>InnoHack 3.0 — Live Presentation Control (Supabase Cloud)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#0b1220;
@@ -244,7 +246,7 @@
   </div>
   <div class="topbar-right">
     <span class="clock" id="clock">--:--:--</span>
-    <span id="syncBadge" style="font-size:11px;color:var(--green);border:1px solid var(--green);padding:4px 9px;border-radius:6px;">● Multi-Screen Sync Active</span>
+    <span id="syncBadge" style="font-size:11px;color:var(--green);border:1px solid var(--green);padding:4px 9px;border-radius:6px;">● Supabase Cloud Realtime</span>
     <div class="role-toggle">
       <button id="btnDisplay" class="active">Display</button>
       <button id="btnControl">Control Room</button>
@@ -358,7 +360,14 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = "innohack30-queue-state-v3";
+  // TODO: Yahan apni Supabase project ki credentials daalein
+  var SUPABASE_URL = "YOUR_SUPABASE_URL_HERE";
+  var SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
+
+  var supabaseClient = null;
+  if (window.supabase && SUPABASE_URL !== "YOUR_SUPABASE_URL_HERE") {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
 
   var ROSTER = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
 
@@ -371,7 +380,7 @@
     ROSTER.forEach(function(t){
       teams[t.pid] = {
         pid: t.pid, teamId: t.teamId, teamName: t.teamName,
-        leader: t.leader, seat: t.seat, status: "pending", // pending | done | skipped | absent
+        leader: t.leader, seat: t.seat, status: "pending",
         extraSec: 0, extraLog: []
       };
     });
@@ -391,34 +400,65 @@
     };
   }
 
-  var state = loadStateFromStorage() || defaultState();
-  syncLiveTracking();
+  var state = defaultState();
   var role = "display";
   var controlUnlocked = false;
   var ADMIN_PASSWORD = "innohack2026";
   var AVG_TEAM_SEC = 900;
 
-  function loadStateFromStorage(){
+  // Supabase Sync Functions
+  async function fetchStateFromSupabase(){
+    if (!supabaseClient) return;
     try {
-      var data = localStorage.getItem(STORAGE_KEY);
-      if (data) return JSON.parse(data);
-    } catch(e){}
-    return null;
+      var { data, error } = await supabaseClient
+        .from('event_state')
+        .select('data')
+        .eq('id', 1)
+        .single();
+      if (data && data.data) {
+        state = data.data;
+        syncLiveTracking();
+        render();
+      }
+    } catch(e) {
+      console.error("Error fetching state:", e);
+    }
   }
 
-  function persistState(){
-    try {
-      state.updatedAt = Date.now();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch(e){}
-  }
+  async function saveStateToSupabase(cb){
+    syncLiveTracking();
+    state.updatedAt = Date.now();
+    render(); // Optimistic UI update
 
-  function saveState(cb){
-    persistState();
-    render();
+    if (supabaseClient) {
+      try {
+        await supabaseClient
+          .from('event_state')
+          .upsert({ id: 1, data: state });
+      } catch(e) {
+        console.error("Error saving state:", e);
+      }
+    }
     if (cb) cb();
   }
 
+  function initSupabaseRealtime(){
+    if (!supabaseClient) return;
+    fetchStateFromSupabase();
+
+    supabaseClient
+      .channel('public:event_state')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_state' }, function(payload){
+        if (payload.new && payload.new.data) {
+          state = payload.new.data;
+          syncLiveTracking();
+          render();
+        }
+      })
+      .subscribe();
+  }
+
+  // Helpers
   function fmtTime(sec){
     sec = Math.max(0, Math.round(sec));
     var m = Math.floor(sec/60), s = sec%60;
@@ -551,7 +591,7 @@
     t.remainingSec = t.presentationPreset || 360;
     t.running = true;
     t.endTime = Date.now() + (t.remainingSec*1000);
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function setPreset(kind, sec){
     if (kind==="presentation") state.timer.presentationPreset = sec;
@@ -559,7 +599,7 @@
     if (state.timer.phase==="qna" && kind==="qna" && !state.timer.running){
       state.timer.remainingSec = sec; state.timer.durationSec = sec;
     }
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function toggleRun(){
     var t = state.timer;
@@ -571,7 +611,7 @@
       t.endTime = Date.now() + (t.remainingSec*1000);
       t.running = true;
     }
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function nextPhase(){
     var t = state.timer;
@@ -580,7 +620,7 @@
       t.remainingSec = t.qnaPreset || 600;
       t.durationSec = t.qnaPreset || 600;
       t.running = false; t.endTime = null;
-      saveState(render);
+      saveStateToSupabase(render);
     } else if (t.phase==="qna"){
       markDoneAndNext();
     }
@@ -601,7 +641,7 @@
       team.extraSec = (team.extraSec||0) + sec;
       team.extraLog = (team.extraLog||[]).concat(["+"+Math.round(sec/60)+" min"]);
     }
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function markDoneAndNext(){
     var liveP = getLivePid();
@@ -609,7 +649,7 @@
       state.teams[liveP].status = "done";
     }
     syncLiveTracking();
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function skipCurrentTeam(){
     var liveP = getLivePid();
@@ -617,32 +657,31 @@
     state.teams[liveP].status = "skipped";
     state.queueOrder = state.queueOrder.filter(function(p){ return p!==liveP; }).concat([liveP]);
     syncLiveTracking();
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function markAbsent(pid){
     pid = parseInt(pid, 10);
     if (!state.teams[pid]) return;
     state.teams[pid].status = "absent";
     syncLiveTracking();
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function requeueTeam(pid){
     pid = parseInt(pid,10);
     if (!state.teams[pid]) return;
     state.teams[pid].status = "pending";
-    // Place back to queue order if not present
     if (!state.queueOrder.includes(pid)){
       state.queueOrder.push(pid);
     }
     syncLiveTracking();
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function moveToFront(pid){
     pid = parseInt(pid,10);
     if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
     state.queueOrder = [pid].concat(state.queueOrder.filter(function(p){ return p!==pid; }));
     syncLiveTracking();
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function postNotice(){
     var input = document.getElementById("noticeInput");
@@ -650,24 +689,24 @@
     if (!val) return;
     state.notice = { text: val, ts: Date.now() };
     input.value = "";
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function dismissNotice(){
     state.notice = null;
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function startAward(){
     state.awardMode = true;
     state.notice = { text: "Award Ceremony — please proceed to the Presentation Area", ts: Date.now() };
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function toggleLunch(){
     state.lunch.active = !state.lunch.active;
-    saveState(render);
+    saveStateToSupabase(render);
   }
   function resetAll(){
     state = defaultState();
-    saveState(render);
+    saveStateToSupabase(render);
   }
 
   // Render Engine
@@ -999,24 +1038,14 @@
     });
   });
 
-  // Clocks & Sync Engines
+  // Clocks & Local Timer
   setInterval(function(){ document.getElementById("clock").textContent = fmtClock(); }, 1000);
-
   setInterval(function(){
     if (getLivePid()) renderHero();
   }, 250);
 
-  // Auto-sync polling every 2 seconds across all displays/systems
-  setInterval(function(){
-    var latestState = loadStateFromStorage();
-    if (latestState && latestState.updatedAt && latestState.updatedAt > (state.updatedAt || 0)) {
-      state = latestState;
-      render();
-    }
-  }, 2000);
-
-  // Initial render
-  render();
+  // Initialize Supabase Realtime
+  initSupabaseRealtime();
 })();
 </script>
 </body>
