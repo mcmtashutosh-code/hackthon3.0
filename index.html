@@ -83,11 +83,8 @@
     color:#8fe0b6;padding:14px 22px;text-align:center;font-weight:800;font-size:15px;letter-spacing:.03em;
   }
   .lunch-banner.show{display:block;}
-  .lock{
-    display:flex;align-items:center;justify-content:center;gap:8px;
-  }
 
-  /* ---------- Custom modal (native prompt/confirm/alert are blocked in sandboxed previews) ---------- */
+  /* ---------- Custom modal ---------- */
   .modal-overlay{
     display:none;position:fixed;inset:0;background:rgba(6,10,18,.72);
     align-items:center;justify-content:center;z-index:100;padding:20px;
@@ -238,7 +235,6 @@
 </style>
 </head>
 <body>
-<script id="state-data" type="application/json">null</script>
 
 <div class="topbar">
   <div class="brand">
@@ -247,7 +243,7 @@
   </div>
   <div class="topbar-right">
     <span class="clock" id="clock">--:--:--</span>
-    <span id="syncBadge" style="display:none;font-size:11px;color:var(--muted-2);border:1px solid var(--border);padding:4px 9px;border-radius:6px;">Local only — not synced</span>
+    <span id="syncBadge" style="font-size:11px;color:var(--green);border:1px solid var(--green);padding:4px 9px;border-radius:6px;">● Live Synced (Auto 3s)</span>
     <div class="role-toggle">
       <button id="btnDisplay" class="active">Display</button>
       <button id="btnControl">Control Room</button>
@@ -266,7 +262,6 @@
 <div class="lunch-banner" id="lunchBanner">🍽️ Lunch Break — 1:00 PM to 1:30 PM</div>
 
 <div class="wrap">
-
   <div class="grid">
     <!-- HERO -->
     <div class="hero" id="hero">
@@ -360,31 +355,27 @@
 (function(){
   "use strict";
 
-  // Captured before any rendering touches the DOM, so this is the pristine
-  // published template — used to rebuild a fresh document to re-publish.
-  var RAW_TEMPLATE = document.documentElement.outerHTML;
-
-  var STORAGE_KEY = "innohack30-queue-state-v1";
+  var STORAGE_KEY = "innohack30-queue-state-v2";
 
   var ROSTER = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
 
-  var PRESENTATION_PRESETS = [300, 360]; // 5, 6 min
-  var QNA_PRESETS = [300, 600]; // 5, 10 min
-  var EXTRA_CHUNKS = [120, 120, 60]; // 2,2,1 min
+  var PRESENTATION_PRESETS = [300, 360];
+  var QNA_PRESETS = [300, 600];
+  var EXTRA_CHUNKS = [120, 120, 60];
 
   function defaultState(){
     var teams = {};
     ROSTER.forEach(function(t){
       teams[t.pid] = {
         pid: t.pid, teamId: t.teamId, teamName: t.teamName,
-        leader: t.leader, seat: t.seat, status: "pending", // pending | done | skipped
+        leader: t.leader, seat: t.seat, status: "pending",
         extraSec: 0, extraLog: []
       };
     });
     return {
       teams: teams,
-      queueOrder: ROSTER.map(function(t){ return t.pid; }), // calling sequence; strict P_ID order by default
-      liveTrackPid: null, // which team the current timer belongs to
+      queueOrder: ROSTER.map(function(t){ return t.pid; }),
+      liveTrackPid: null,
       timer: {
         phase: "idle", running: false, endTime: null, remainingSec: 0,
         durationSec: 0, presentationPreset: 360, qnaPreset: 600,
@@ -397,87 +388,35 @@
     };
   }
 
-  function readEmbeddedState(){
-    var el = document.getElementById("state-data");
-    if (!el) return null;
-    var txt = (el.textContent || "").trim();
-    if (!txt || txt === "null") return null;
-    try { return JSON.parse(txt); } catch(e){ return null; }
-  }
-
-  var state = readEmbeddedState() || defaultState();
-  syncLiveTracking(); // put team P_ID 1 into "awaiting start" from the very first render
-  var role = "display"; // display | control
-  var controlUnlocked = false; // in-memory only (no browser storage allowed in artifacts)
+  var state = loadStateFromStorage() || defaultState();
+  syncLiveTracking();
+  var role = "display";
+  var controlUnlocked = false;
   var ADMIN_PASSWORD = "innohack2026";
-  var AVG_TEAM_SEC = 900; // ~15 min per team without extra time, used for ETA estimates
+  var AVG_TEAM_SEC = 900;
 
-  // ---------------- storage: Claude's "artifact" capability ----------------
-  // This page's shared state is embedded as JSON inside its own published HTML
-  // (the #state-data tag). A control-room action rebuilds the document with the
-  // updated JSON and re-publishes it; the platform then reloads EVERY open view
-  // — including students' own phones on the public link — to the new version.
-  // No sign-in / organization membership is required to just view a published page.
-  var hasArtifact = false;
-  var claudeArtifactNS = null;
-  var memoryStore = {};
-  var publishInFlight = false;
-  var publishPending = false;
-
-  function loadLocalFallback(){
-    if (memoryStore[STORAGE_KEY]){
-      try { state = JSON.parse(memoryStore[STORAGE_KEY]); } catch(e){}
-    }
-  }
-
-  function buildPublishHtml(){
-    var jsonSafe = JSON.stringify(state).replace(/<\/script/gi, "<\\/script");
-    return RAW_TEMPLATE.replace(
-      /<script id="state-data" type="application\/json">[\s\S]*?<\/script>/,
-      '<script id="state-data" type="application/json">' + jsonSafe + '<\/script>'
-    );
+  function loadStateFromStorage(){
+    try {
+      var data = localStorage.getItem(STORAGE_KEY);
+      if (data) return JSON.parse(data);
+    } catch(e){}
+    return null;
   }
 
   function persistState(){
-    state.updatedAt = Date.now();
-    if (!hasArtifact || !claudeArtifactNS){
-      memoryStore[STORAGE_KEY] = JSON.stringify(state);
-      return;
-    }
-    if (publishInFlight){ publishPending = true; return; }
-    publishInFlight = true;
-    var html = buildPublishHtml();
-    claudeArtifactNS.publish(html).catch(function(err){
-      console.error("publish failed", err);
-    }).then(function(){
-      publishInFlight = false;
-      if (publishPending){ publishPending = false; persistState(); }
-    });
+    try {
+      state.updatedAt = Date.now();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch(e){}
   }
 
-  // Every admin action calls saveState(render): render immediately (optimistic UI),
-  // publish in the background. Everyone with the page open — including read-only
-  // viewers — is reloaded to the published state automatically by the platform.
   function saveState(cb){
     persistState();
+    render();
     if (cb) cb();
   }
 
-  function initStorage(){
-    if (!window.claude || typeof window.claude.use !== "function"){
-      hasArtifact = false; loadLocalFallback(); render(); return;
-    }
-    window.claude.use("artifact").then(function(a){
-      hasArtifact = !!a;
-      claudeArtifactNS = a || null;
-      if (!hasArtifact) loadLocalFallback();
-      render();
-    }).catch(function(){
-      hasArtifact = false; loadLocalFallback(); render();
-    });
-  }
-
-  // ---------------- helpers ----------------
+  // Helpers
   function fmtTime(sec){
     sec = Math.max(0, Math.round(sec));
     var m = Math.floor(sec/60), s = sec%60;
@@ -496,14 +435,12 @@
     return h12+":"+(m<10?"0":"")+m+" "+ampm;
   }
   function computeETAs(){
-    // Rough estimate of when each waiting team will be called, assuming
-    // ~15 min/team (AVG_TEAM_SEC) and the strict P_ID calling order.
     var etas = {};
     var cursor = Date.now();
     var q = getActiveQueue();
     if (q.length && state.liveTrackPid===q[0].pid) cursor += Math.max(0, remainingSeconds())*1000;
     q.forEach(function(t, i){
-      if (i===0) return; // live team, no ETA needed
+      if (i===0) return;
       etas[t.pid] = cursor;
       cursor += AVG_TEAM_SEC*1000;
     });
@@ -515,7 +452,7 @@
     });
   }
 
-  // ---------------- custom modal (native prompt/confirm/alert are blocked in sandboxed previews) ----------------
+  // Modal logic
   var modalOverlay = document.getElementById("modalOverlay");
   var modalTitle = document.getElementById("modalTitle");
   var modalMessage = document.getElementById("modalMessage");
@@ -529,7 +466,6 @@
     modalResolve = null;
   }
   function openModal(opts){
-    // opts: {title, message, showInput, placeholder, okLabel, cancelLabel, hideCancel}
     modalTitle.textContent = opts.title || "";
     modalMessage.textContent = opts.message || "";
     modalOk.textContent = opts.okLabel || "OK";
@@ -569,8 +505,8 @@
   function showAlert(title, message){
     return openModal({title:title, message:message, hideCancel:true});
   }
+
   function getActiveQueue(){
-    // teams still pending, in the calling order defined by queueOrder
     return state.queueOrder
       .map(function(pid){ return state.teams[pid]; })
       .filter(function(t){ return t && t.status==="pending"; });
@@ -579,16 +515,8 @@
   function getLab2Pid(){ var q=getActiveQueue(); return q.length>1 ? q[1].pid : null; }
   function getLab1Pid(){ var q=getActiveQueue(); return q.length>2 ? q[2].pid : null; }
   function getClassroomTeams(){ return getActiveQueue().slice(3); }
-  function stageOf(pid){
-    if (state.teams[pid] && state.teams[pid].status!=="pending") return state.teams[pid].status; // done | skipped
-    if (pid===getLivePid()) return "live";
-    if (pid===getLab2Pid()) return "lab2";
-    if (pid===getLab1Pid()) return "lab1";
-    return "classroom";
-  }
+
   function syncLiveTracking(){
-    // Whenever the live team changes (cascade after done/skip/reorder), reset the
-    // timer to "awaiting" for the new team so it never auto-starts without permission.
     var liveP = getLivePid();
     if (liveP !== state.liveTrackPid){
       state.liveTrackPid = liveP;
@@ -601,6 +529,7 @@
       };
     }
   }
+
   function remainingSeconds(){
     var t = state.timer;
     if (t.running && t.endTime) {
@@ -609,11 +538,11 @@
     return t.remainingSec || 0;
   }
 
-  // ---------------- admin actions ----------------
+  // Admin Actions
   function startTimer(){
     var liveP = getLivePid();
     if (!liveP) return;
-    syncLiveTracking(); // safety: make sure timer object belongs to the right team
+    syncLiveTracking();
     var t = state.timer;
     t.phase = "presentation";
     t.durationSec = t.presentationPreset || 360;
@@ -677,14 +606,13 @@
     if (liveP){
       state.teams[liveP].status = "done";
     }
-    syncLiveTracking(); // cascades P_ID+1 into Live, next into Lab2, next into Lab1
+    syncLiveTracking();
     saveState(render);
   }
   function skipCurrentTeam(){
     var liveP = getLivePid();
     if (!liveP) return;
     state.teams[liveP].status = "skipped";
-    // move to the end of the calling order so it doesn't block anyone if re-queued later
     state.queueOrder = state.queueOrder.filter(function(p){ return p!==liveP; }).concat([liveP]);
     syncLiveTracking();
     saveState(render);
@@ -697,8 +625,6 @@
     saveState(render);
   }
   function moveToFront(pid){
-    // Emergency override: force a specific team to be called next (Live),
-    // for cases like a wrong call, a technical error, or an out-of-order arrival.
     pid = parseInt(pid,10);
     if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
     state.queueOrder = [pid].concat(state.queueOrder.filter(function(p){ return p!==pid; }));
@@ -731,7 +657,7 @@
     saveState(render);
   }
 
-  // ---------------- render ----------------
+  // Render Engine
   function render(){
     renderNotice();
     renderHero();
@@ -858,7 +784,7 @@
     var count = (lab1Pid?1:0) + (lab2Pid?1:0);
     document.getElementById("queueCount").textContent = count+" waiting outside";
 
-    function chip(pid, etaNote){
+    function chip(pid){
       var team = state.teams[pid];
       var eta = etas[pid] ? '<div class="sub" style="margin-top:2px;">~ETA '+fmtClockTime(etas[pid])+'</div>' : "";
       return '<div class="team-chip"><div class="info"><div class="nm">'+esc(team.teamName)+'</div>'+
@@ -950,7 +876,7 @@
     if (skipEl) skipEl.textContent = skipped;
   }
 
-  // ---------------- events (delegation) ----------------
+  // Event Listeners
   document.addEventListener("click", function(e){
     var btn = e.target.closest("[data-action]");
     if (!btn) return;
@@ -962,7 +888,7 @@
       case "nextPhase": nextPhase(); break;
       case "extra": addExtra(parseInt(btn.getAttribute("data-idx"),10)); break;
       case "skip":
-        askConfirm("Skip this team", "Mark the current team as skipped (e.g. absent or a call error)? They can be re-added from Admin tools later.").then(function(ok){
+        askConfirm("Skip this team", "Mark the current team as skipped?").then(function(ok){
           if (ok) skipCurrentTeam();
         });
         break;
@@ -973,7 +899,7 @@
         break;
       case "requeue": requeueTeam(pid); break;
       case "moveToFront":
-        askConfirm("Call this team next (override)", "This overrides the normal P_ID order and makes this team Live next. Use this only to fix an error. Continue?").then(function(ok){
+        askConfirm("Call this team next (override)", "Make this team Live next?").then(function(ok){
           if (ok) moveToFront(pid);
         });
         break;
@@ -988,7 +914,7 @@
   document.getElementById("btnAward").addEventListener("click", startAward);
   document.getElementById("btnLunch").addEventListener("click", toggleLunch);
   document.getElementById("btnReset").addEventListener("click", function(){
-    askConfirm("Reset entire queue", "This will reset all 31 teams back to their classrooms and clear all timers, extra time, and notices. Are you sure?").then(function(ok){
+    askConfirm("Reset entire queue", "Reset all 31 teams?").then(function(ok){
       if (ok) resetAll();
     });
   });
@@ -1009,30 +935,31 @@
     }
     if (controlUnlocked){ unlock(); return; }
     askText("Control room access", "Enter the control room password:", "Password", "password").then(function(pass){
-      if (pass === null) return; // cancelled
+      if (pass === null) return;
       if (pass === ADMIN_PASSWORD){ unlock(); }
-      else { showAlert("Incorrect password", "That password isn't correct. Please try again."); }
+      else { showAlert("Incorrect password", "Try again."); }
     });
   });
 
-  // ---------------- clock + realtime sync ----------------
+  // Clocks & Auto-Sync Engine (Har 3 second me LocalStorage check karega)
   setInterval(function(){ document.getElementById("clock").textContent = fmtClock(); }, 1000);
 
-  // fast local tick for the live timer display (doesn't touch the network)
+  // Fast local timer refresh
   setInterval(function(){
     if (getLivePid()) renderHero();
   }, 250);
 
-  // initial load — subscribes to realtime updates via the db capability;
-  // falls back to a local-only store (and shows the "Local only" badge)
-  // when db isn't available in this context.
-  initStorage();
-  setTimeout(function(){
-    if (!hasArtifact){
-      var badge = document.getElementById("syncBadge");
-      if (badge) badge.style.display = "inline-block";
+  // Auto-Sync Polling (Har 3 second mein saari screens update ho jayengi)
+  setInterval(function(){
+    var latestState = loadStateFromStorage();
+    if (latestState && latestState.updatedAt && latestState.updatedAt > (state.updatedAt || 0)) {
+      state = latestState;
+      render();
     }
-  }, 1200);
+  }, 3000);
+
+  // Initial render
+  render();
 })();
 </script>
 </body>
