@@ -386,7 +386,7 @@
       teams[t.pid] = {
         pid: t.pid, teamId: t.teamId, teamName: t.teamName,
         leader: t.leader, seat: t.seat, status: "pending", // pending | done | skipped
-        extraSec: 0, extraLog: []
+        extraSec: 0, extraLog: [], startedAt: null, endedAt: null
       };
     });
     return {
@@ -427,13 +427,16 @@
     if (!hasSupabase){ if (cb) cb(); return; }
     supa.from("hackathon_state").select("state").eq("id", ROW_ID).single()
       .then(function(res){
-        if (res.data && res.data.state){
+        var remoteState = res.data && res.data.state;
+        var looksValid = remoteState && remoteState.teams && Object.keys(remoteState.teams).length > 0;
+        if (looksValid){
           applyingRemote = true;
-          state = res.data.state;
+          state = remoteState;
           if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD; // older saved rows
           applyingRemote = false;
-        } else if (res.error && res.error.code === "PGRST116"){
-          // no row yet — seed it
+        } else {
+          // no row yet, or an empty placeholder row (e.g. the '{}' the SQL
+          // schema seeds on first setup) — write real starting data now.
           seedRow();
         }
         if (cb) cb();
@@ -444,6 +447,7 @@
   function seedRow(){
     if (!hasSupabase) return;
     supa.from("hackathon_state").upsert({ id: ROW_ID, state: state, updated_at: new Date().toISOString() }).then(function(){});
+    syncTeamsTable();
   }
 
   function persistState(){
@@ -461,6 +465,45 @@
         writeInFlight = false;
         if (writePending){ writePending = false; persistState(); }
       });
+    syncTeamsTable();
+  }
+
+  // ---------------- queryable relational mirror: the "teams" table ----------------
+  // hackathon_state holds the live app's working state (one JSON blob, fast to
+  // read/write for the UI). Alongside it, every save also mirrors each team as
+  // its own row in a plain "teams" table — so you can run normal SQL
+  // (Table Editor, SQL Editor, or any BI tool) against real columns:
+  //   select team_name, leader, status, extra_sec from teams order by pid;
+  //   select team_name, extra_sec from teams where extra_sec > 0;
+  //   select team_name, started_at, ended_at,
+  //          extract(epoch from (ended_at - started_at)) as seconds_taken
+  //   from teams where status = 'done' order by pid;
+  var teamsSyncTimer = null;
+  function syncTeamsTable(){
+    // Debounced: several state changes can land in the same tick (e.g. a
+    // cascade after "mark done"); one bulk upsert covers all of them.
+    if (teamsSyncTimer) clearTimeout(teamsSyncTimer);
+    teamsSyncTimer = setTimeout(function(){
+      if (!hasSupabase) return;
+      var rows = Object.values(state.teams).map(function(t){
+        return {
+          pid: t.pid,
+          team_id: t.teamId,
+          team_name: t.teamName,
+          leader: t.leader,
+          seat: t.seat,
+          status: t.status,
+          extra_sec: t.extraSec || 0,
+          extra_log: t.extraLog || [],
+          started_at: t.startedAt ? new Date(t.startedAt).toISOString() : null,
+          ended_at: t.endedAt ? new Date(t.endedAt).toISOString() : null,
+          updated_at: new Date().toISOString()
+        };
+      });
+      supa.from("teams").upsert(rows, { onConflict: "pid" }).then(function(res){
+        if (res.error) console.error("teams table sync failed", res.error);
+      });
+    }, 400);
   }
 
   // Every admin action calls saveState(render): render immediately (optimistic UI),
@@ -486,7 +529,8 @@
         { event: "*", schema: "public", table: "hackathon_state", filter: "id=eq." + ROW_ID },
         function(payload){
           if (writeInFlight) return; // our own write in flight; the poll/next event will settle it
-          if (payload.new && payload.new.state){
+          if (payload.new && payload.new.state && payload.new.state.teams &&
+              Object.keys(payload.new.state.teams).length > 0){
             state = payload.new.state;
             if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD;
             render();
@@ -638,6 +682,9 @@
     t.remainingSec = t.presentationPreset || 360;
     t.running = true;
     t.endTime = Date.now() + (t.remainingSec*1000);
+    if (state.teams[liveP] && !state.teams[liveP].startedAt){
+      state.teams[liveP].startedAt = Date.now();
+    }
     saveState(render);
   }
   function setPreset(kind, sec){
@@ -694,6 +741,7 @@
     var liveP = getLivePid();
     if (liveP){
       state.teams[liveP].status = "done";
+      state.teams[liveP].endedAt = Date.now();
     }
     syncLiveTracking(); // cascades P_ID+1 into Live, next into Lab2, next into Lab1
     saveState(render);
@@ -702,6 +750,7 @@
     var liveP = getLivePid();
     if (!liveP) return;
     state.teams[liveP].status = "skipped";
+    state.teams[liveP].endedAt = Date.now();
     // move to the end of the calling order so it doesn't block anyone if re-queued later
     state.queueOrder = state.queueOrder.filter(function(p){ return p!==liveP; }).concat([liveP]);
     syncLiveTracking();
@@ -711,6 +760,8 @@
     pid = parseInt(pid,10);
     if (!state.teams[pid]) return;
     state.teams[pid].status = "pending";
+    state.teams[pid].startedAt = null;
+    state.teams[pid].endedAt = null;
     syncLiveTracking();
     saveState(render);
   }
