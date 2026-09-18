@@ -242,8 +242,8 @@
 
 <div class="topbar">
   <div class="brand">
-    <span class="eyebrow">Innovation &amp; Entrepreneurship Festival-2026</span>
-    <h1>InnoHack 3.0 — Presentation Control</h1>
+    <span class="eyebrow" id="brandEyebrow">Innovation &amp; Entrepreneurship Festival-2026</span>
+    <h1 id="brandTitle">InnoHack 3.0 — Presentation Control</h1>
   </div>
   <div class="topbar-right">
     <span class="clock" id="clock">--:--:--</span>
@@ -288,7 +288,20 @@
       </div>
 
       <div class="panel section-gap" id="controlPanel" style="display:none;">
-        <p class="panel-title">Notice board</p>
+        <p class="panel-title">Active event — everyone sees this one</p>
+        <div class="composer">
+          <select id="eventSelect" style="flex:1;background:var(--panel-alt);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 12px;font-size:13px;">
+            <option value="innohack">InnoHack 3.0 (18 Sep) — Computer Science</option>
+            <option value="forge">Startup Forge 1.0 (19 Sep) — Management</option>
+          </select>
+        </div>
+        <div class="legend section-gap" style="margin-top:6px;">
+          Switching this changes what every Display screen and Control Room shows,
+          for everyone, immediately. Each event keeps its own separate queue, timer,
+          and progress — switching and switching back loses nothing.
+        </div>
+
+        <p class="panel-title section-gap">Notice board</p>
         <div class="composer">
           <input id="noticeInput" type="text" placeholder="Type a notice for everyone…" maxlength="140">
           <button class="btn primary small" id="btnPostNotice">Post</button>
@@ -345,7 +358,8 @@
     <div id="seatGroups"></div>
   </div>
 
-  <p class="footer-note">Microtek College of Management &amp; Technology (Sm Campus) — InnoHack 3.0, 18/09/2026</p>
+  <p class="footer-note" id="footerNote">Microtek College of Management &amp; Technology (Sm Campus) — InnoHack 3.0, 18/09/2026</p>
+  <p class="footer-note" style="margin-top:6px;">Designed and developed by <b style="color:var(--muted);">Ashutosh Dubey</b></p>
 </div>
 
 <div class="modal-overlay" id="modalOverlay">
@@ -377,15 +391,22 @@
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
 
-  var ROSTER = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
+  var ROSTER_INNOHACK = [{"pid": 1, "teamId": "26M01", "teamName": "Tech Veda", "leader": "Shikhar Singh Rajput", "seat": "MB1"}, {"pid": 2, "teamId": "26M02", "teamName": "Team NovaMind", "leader": "Divyansh Jaiswal", "seat": "MB4"}, {"pid": 3, "teamId": "26M20", "teamName": "TRACKSETU", "leader": "ASHISH KUMAR", "seat": "MB4"}, {"pid": 4, "teamId": "26M03", "teamName": "Parallax", "leader": "Aprajita pandey", "seat": "MB1"}, {"pid": 5, "teamId": "26M04", "teamName": "AarogyaWorriors", "leader": "Darshana Dubey", "seat": "MB4"}, {"pid": 6, "teamId": "26M21", "teamName": "MailGuardians", "leader": "Khushi Khan", "seat": "MB4"}, {"pid": 7, "teamId": "26M05", "teamName": "CODE NINJAS", "leader": "DIVYANSH TIWARI", "seat": "MB1"}, {"pid": 8, "teamId": "26M23", "teamName": "The Matrix", "leader": "Ayushman Singh", "seat": "MB4"}, {"pid": 9, "teamId": "26M22", "teamName": "NAIN-X", "leader": "PRINCE GUPTA", "seat": "Seminar Hall 2nd Floor"}, {"pid": 10, "teamId": "26M19", "teamName": "Beyond-404", "leader": "Himanshu Vishwakarma", "seat": "MB1"}, {"pid": 11, "teamId": "26M26", "teamName": "SecureVaultX", "leader": "Sakshi Pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26M24", "teamName": "Rookie minds", "leader": "Om Chaurasiya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 13, "teamId": "26M06", "teamName": "Srijan Spark", "leader": "Ayush verma", "seat": "MB1"}, {"pid": 14, "teamId": "26M18", "teamName": "Team Zenith", "leader": "Shashi Kumar Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26M07", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB2"}, {"pid": 16, "teamId": "26M25", "teamName": "NEXUS", "leader": "Aditya Paul", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26M08", "teamName": "Techdrivers", "leader": "Khushi patel", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26M09", "teamName": "Team Nexus", "leader": "Karuna Tiwari", "seat": "MB2"}, {"pid": 19, "teamId": "26M10", "teamName": "Alpha", "leader": "Arpita Kumari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26M30", "teamName": "Threatforecast", "leader": "Annu Sriwastav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26M11", "teamName": "Team Next Node", "leader": "Saksham Jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26M12", "teamName": "Travel Ease", "leader": "Yuvraj Singh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26M13", "teamName": "Team Ethereal", "leader": "Yuvaraj Srivastava", "seat": "MB2"}, {"pid": 24, "teamId": "26M14", "teamName": "Techorbit", "leader": "Shivansh singh kashyap", "seat": "Seminar Hall 2nd Floor"}, {"pid": 25, "teamId": "26M15", "teamName": "NextGen Coder", "leader": "Ankit Maurya", "seat": "MB2"}, {"pid": 26, "teamId": "26M16", "teamName": "Gram Shiksha Tech", "leader": "Gaurav Sharma", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26M17", "teamName": "Optum", "leader": "Shakti Pandey", "seat": "MB3"}, {"pid": 28, "teamId": "26M29", "teamName": "VIRASAT-X", "leader": "Ashwani Gupta", "seat": "Conference Room"}, {"pid": 29, "teamId": "26M27", "teamName": "Skill Bridge", "leader": "Vedangi Singh", "seat": "Conference Room"}, {"pid": 30, "teamId": "26M28", "teamName": "TechOrbit", "leader": "SHIVANSH", "seat": "CS1"}, {"pid": 31, "teamId": "26M31", "teamName": "Comment reader", "leader": "Manish Prajapati", "seat": "CS1"}];
+
+  var ROSTER_FORGE = [{"pid": 1, "teamId": "26S22", "teamName": "Agromat", "leader": "Shreya Chaturvedi", "seat": "MB4"}, {"pid": 2, "teamId": "26S24", "teamName": "Wayfinder", "leader": "Sneha srivastava", "seat": "MB4"}, {"pid": 3, "teamId": "26S01", "teamName": "GUFY Guys", "leader": "Naitik Mishra", "seat": "MB1"}, {"pid": 4, "teamId": "26S17", "teamName": "Borrow buddies", "leader": "Shristi Patel", "seat": "MB4"}, {"pid": 5, "teamId": "26S02", "teamName": "Joy ride", "leader": "Tannu Sharma", "seat": "MB4"}, {"pid": 6, "teamId": "26S03", "teamName": "Swayam Setu", "leader": "Kritika Gupta", "seat": "MB1"}, {"pid": 7, "teamId": "26S18", "teamName": "Better version", "leader": "KM Rashmi", "seat": "MB4"}, {"pid": 8, "teamId": "26S04", "teamName": "Team Zenith", "leader": "Abhishek Kumar Keshari", "seat": "MB4"}, {"pid": 9, "teamId": "26S05", "teamName": "THE FORGE FOUR", "leader": "ABHIYAN ROHIT DUBEY", "seat": "MB1"}, {"pid": 10, "teamId": "26S19", "teamName": "Glamorous of RSS", "leader": "Rahul Singh", "seat": "MB4"}, {"pid": 11, "teamId": "26S06", "teamName": "Team JeevanJyoti", "leader": "Shivam pandey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 12, "teamId": "26S07", "teamName": "Vahansetu", "leader": "Devanshi Jaiswal", "seat": "MB1"}, {"pid": 13, "teamId": "26S20", "teamName": "AS\u00b2", "leader": "Anjuman Saumya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 14, "teamId": "26S08", "teamName": "Next gen innovators", "leader": "Raunak Tripathi", "seat": "Seminar Hall 2nd Floor"}, {"pid": 15, "teamId": "26S09", "teamName": "Growth Grid", "leader": "Raza Mahar Siddiqui", "seat": "MB2"}, {"pid": 16, "teamId": "26S21", "teamName": "Beyond the barriers", "leader": "Gulshan kumar", "seat": "Seminar Hall 2nd Floor"}, {"pid": 17, "teamId": "26S10", "teamName": "The dairy developer", "leader": "Hanshika Maurya", "seat": "Seminar Hall 2nd Floor"}, {"pid": 18, "teamId": "26S11", "teamName": "INDUSTRIA", "leader": "Shreyansh Seth", "seat": "MB2"}, {"pid": 19, "teamId": "26S23", "teamName": "Vayushala", "leader": "shreya tripathi", "seat": "Seminar Hall 2nd Floor"}, {"pid": 20, "teamId": "26S12", "teamName": "Diamonds", "leader": "Adarsh chaubey", "seat": "Seminar Hall 2nd Floor"}, {"pid": 21, "teamId": "26S13", "teamName": "Team Gridlock", "leader": "Ujjwal jaiswal", "seat": "MB2"}, {"pid": 22, "teamId": "26S25", "teamName": "Voice unbound", "leader": "Aryan Kumar", "seat": "Seminar Hall 2nd Floor"}, {"pid": 23, "teamId": "26S14", "teamName": "Xsmart", "leader": "Ganesh kushwaha", "seat": "Seminar Hall 2nd Floor"}, {"pid": 24, "teamId": "26S15", "teamName": "Catalyst", "leader": "Kaynaat Zaheen", "seat": "MB2"}, {"pid": 25, "teamId": "26S16", "teamName": "Yashwant,aachal,simran,khushi", "leader": "Yashwant Kumar Yadav", "seat": "Seminar Hall 2nd Floor"}, {"pid": 26, "teamId": "26S26", "teamName": "Biz storm", "leader": "Sagar gupta", "seat": "Seminar Hall 2nd Floor"}, {"pid": 27, "teamId": "26S27", "teamName": "Prisha", "leader": "Prisha keshari", "seat": "Seminar Hall 2nd Floor"}, {"pid": 28, "teamId": "26S28", "teamName": "Xyz", "leader": "Ansh", "seat": "Seminar Hall 2nd Floor"}, {"pid": 29, "teamId": "26S29", "teamName": "The fourth dimension", "leader": "Avantika Tripathi", "seat": "Seminar Hall 2nd Floor"}, {"pid": 30, "teamId": "26S30", "teamName": "Tech Matrix", "leader": "Ayush Gond", "seat": "Seminar Hall 2nd Floor"}, {"pid": 31, "teamId": "26S31", "teamName": "HACKSMITH", "leader": "Vishnu Mishra", "seat": "Seminar Hall 2nd Floor"}, {"pid": 32, "teamId": "26S32", "teamName": "Shree", "leader": "Aryan Singh", "seat": "Conference Room"}, {"pid": 33, "teamId": "26S33", "teamName": "QRWeave", "leader": "Richa Kumari", "seat": "Conference Room"}, {"pid": 34, "teamId": "26S34", "teamName": "Skill exchange", "leader": "Ansh Kumar", "seat": "Conference Room"}];
+
+  var EVENTS = {
+    innohack: { key: "innohack", label: "InnoHack 3.0", dept: "Computer Science", date: "18 Sep 2026", roster: ROSTER_INNOHACK },
+    forge:    { key: "forge",    label: "Startup Forge 1.0", dept: "Management", date: "19 Sep 2026", roster: ROSTER_FORGE }
+  };
 
   var PRESENTATION_PRESETS = [300, 360]; // 5, 6 min
   var QNA_PRESETS = [300, 600]; // 5, 10 min
   var EXTRA_CHUNKS = [120, 120, 60]; // 2,2,1 min
 
-  function defaultState(){
+  function makeEventState(roster){
     var teams = {};
-    ROSTER.forEach(function(t){
+    roster.forEach(function(t){
       teams[t.pid] = {
         pid: t.pid, teamId: t.teamId, teamName: t.teamName,
         leader: t.leader, seat: t.seat, status: "pending", // pending | done | skipped
@@ -394,7 +415,7 @@
     });
     return {
       teams: teams,
-      queueOrder: ROSTER.map(function(t){ return t.pid; }), // calling sequence; strict P_ID order by default
+      queueOrder: roster.map(function(t){ return t.pid; }), // calling sequence; strict P_ID order by default
       liveTrackPid: null, // which team the current timer belongs to
       timer: {
         phase: "idle", running: false, endTime: null, remainingSec: 0,
@@ -403,11 +424,28 @@
       },
       notice: null,
       awardMode: false,
-      lunch: { active: false },
-      adminPassword: DEFAULT_PASSWORD,
+      lunch: { active: false }
+    };
+  }
+
+  function defaultState(){
+    return {
+      activeEvent: "innohack", // "innohack" | "forge" — which event everyone currently sees
+      events: {
+        innohack: makeEventState(ROSTER_INNOHACK),
+        forge: makeEventState(ROSTER_FORGE)
+      },
+      adminPassword: DEFAULT_PASSWORD, // shared across both events
       updatedAt: Date.now()
     };
   }
+
+  // The currently-active event's working state — every function below reads
+  // and writes through this instead of touching `state` directly, so the
+  // exact same logic runs for whichever event is selected.
+  function ev(){ return state.events[state.activeEvent]; }
+  function evMeta(){ return EVENTS[state.activeEvent]; }
+  function roster(){ return evMeta().roster; }
 
   var state = defaultState();
   syncLiveTracking(); // put team P_ID 1 into "awaiting start" from the very first render
@@ -432,16 +470,18 @@
     supa.from("hackathon_state").select("state").eq("id", ROW_ID).single()
       .then(function(res){
         var remoteState = res.data && res.data.state;
-        var looksValid = remoteState && remoteState.teams && Object.keys(remoteState.teams).length > 0;
+        var looksValid = remoteState && remoteState.events && remoteState.events.innohack &&
+          remoteState.events.innohack.teams && Object.keys(remoteState.events.innohack.teams).length > 0;
         if (looksValid){
           applyingRemote = true;
           state = remoteState;
           if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD; // older saved rows
+          if (!state.activeEvent) state.activeEvent = "innohack";
           lastKnownUpdatedAt = state.updatedAt || Date.now();
           applyingRemote = false;
         } else {
-          // no row yet, or an empty placeholder row (e.g. the '{}' the SQL
-          // schema seeds on first setup) — write real starting data now.
+          // no row yet, or an empty/older-shape placeholder row — write
+          // real starting data (both events) now.
           seedRow();
         }
         if (cb) cb();
@@ -488,25 +528,34 @@
   function syncTeamsTable(){
     // Debounced: several state changes can land in the same tick (e.g. a
     // cascade after "mark done"); one bulk upsert covers all of them.
+    // Syncs BOTH events every time (team_id is globally unique — 26M..
+    // vs 26S..) so the teams table always has complete, queryable data
+    // for whichever event you want, regardless of which one is live.
     if (teamsSyncTimer) clearTimeout(teamsSyncTimer);
     teamsSyncTimer = setTimeout(function(){
       if (!hasSupabase) return;
-      var rows = Object.values(state.teams).map(function(t){
-        return {
-          pid: t.pid,
-          team_id: t.teamId,
-          team_name: t.teamName,
-          leader: t.leader,
-          seat: t.seat,
-          status: t.status,
-          extra_sec: t.extraSec || 0,
-          extra_log: t.extraLog || [],
-          started_at: t.startedAt ? new Date(t.startedAt).toISOString() : null,
-          ended_at: t.endedAt ? new Date(t.endedAt).toISOString() : null,
-          updated_at: new Date().toISOString()
-        };
+      var rows = [];
+      Object.keys(EVENTS).forEach(function(evKey){
+        var es = state.events[evKey];
+        if (!es) return;
+        Object.values(es.teams).forEach(function(t){
+          rows.push({
+            team_id: t.teamId,
+            event: evKey,
+            pid: t.pid,
+            team_name: t.teamName,
+            leader: t.leader,
+            seat: t.seat,
+            status: t.status,
+            extra_sec: t.extraSec || 0,
+            extra_log: t.extraLog || [],
+            started_at: t.startedAt ? new Date(t.startedAt).toISOString() : null,
+            ended_at: t.endedAt ? new Date(t.endedAt).toISOString() : null,
+            updated_at: new Date().toISOString()
+          });
+        });
       });
-      supa.from("teams").upsert(rows, { onConflict: "pid" }).then(function(res){
+      supa.from("teams").upsert(rows, { onConflict: "team_id" }).then(function(res){
         if (res.error) console.error("teams table sync failed", res.error);
       });
     }, 400);
@@ -535,13 +584,16 @@
         { event: "*", schema: "public", table: "hackathon_state", filter: "id=eq." + ROW_ID },
         function(payload){
           if (writeInFlight) return; // our own write in flight; the poll/next event will settle it
-          if (payload.new && payload.new.state && payload.new.state.teams &&
-              Object.keys(payload.new.state.teams).length > 0){
-            var incomingUpdatedAt = payload.new.state.updatedAt || 0;
+          var incoming = payload.new && payload.new.state;
+          var incomingValid = incoming && incoming.events && incoming.events.innohack &&
+            incoming.events.innohack.teams && Object.keys(incoming.events.innohack.teams).length > 0;
+          if (incomingValid){
+            var incomingUpdatedAt = incoming.updatedAt || 0;
             if (incomingUpdatedAt <= lastKnownUpdatedAt) return; // our own echo — buttons stay put
             lastKnownUpdatedAt = incomingUpdatedAt;
-            state = payload.new.state;
+            state = incoming;
             if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD;
+            if (!state.activeEvent) state.activeEvent = "innohack";
             render();
           }
         })
@@ -572,7 +624,7 @@
     var etas = {};
     var cursor = Date.now();
     var q = getActiveQueue();
-    if (q.length && state.liveTrackPid===q[0].pid) cursor += Math.max(0, remainingSeconds())*1000;
+    if (q.length && ev().liveTrackPid===q[0].pid) cursor += Math.max(0, remainingSeconds())*1000;
     q.forEach(function(t, i){
       if (i===0) return; // live team, no ETA needed
       etas[t.pid] = cursor;
@@ -642,8 +694,8 @@
   }
   function getActiveQueue(){
     // teams still pending, in the calling order defined by queueOrder
-    return state.queueOrder
-      .map(function(pid){ return state.teams[pid]; })
+    return ev().queueOrder
+      .map(function(pid){ return ev().teams[pid]; })
       .filter(function(t){ return t && t.status==="pending"; });
   }
   function getLivePid(){ var q=getActiveQueue(); return q.length ? q[0].pid : null; }
@@ -651,7 +703,7 @@
   function getLab1Pid(){ var q=getActiveQueue(); return q.length>2 ? q[2].pid : null; }
   function getClassroomTeams(){ return getActiveQueue().slice(3); }
   function stageOf(pid){
-    if (state.teams[pid] && state.teams[pid].status!=="pending") return state.teams[pid].status; // done | skipped
+    if (ev().teams[pid] && ev().teams[pid].status!=="pending") return ev().teams[pid].status; // done | skipped
     if (pid===getLivePid()) return "live";
     if (pid===getLab2Pid()) return "lab2";
     if (pid===getLab1Pid()) return "lab1";
@@ -661,19 +713,19 @@
     // Whenever the live team changes (cascade after done/skip/reorder), reset the
     // timer to "awaiting" for the new team so it never auto-starts without permission.
     var liveP = getLivePid();
-    if (liveP !== state.liveTrackPid){
-      state.liveTrackPid = liveP;
-      state.timer = {
+    if (liveP !== ev().liveTrackPid){
+      ev().liveTrackPid = liveP;
+      ev().timer = {
         phase: liveP ? "awaiting" : "idle",
         running: false, endTime: null, remainingSec: 0, durationSec: 0,
-        presentationPreset: state.timer.presentationPreset || 360,
-        qnaPreset: state.timer.qnaPreset || 600,
+        presentationPreset: ev().timer.presentationPreset || 360,
+        qnaPreset: ev().timer.qnaPreset || 600,
         extraUsed: [false,false,false], extraLog: []
       };
     }
   }
   function remainingSeconds(){
-    var t = state.timer;
+    var t = ev().timer;
     if (t.running && t.endTime) {
       return (t.endTime - Date.now())/1000;
     }
@@ -685,27 +737,27 @@
     var liveP = getLivePid();
     if (!liveP) return;
     syncLiveTracking(); // safety: make sure timer object belongs to the right team
-    var t = state.timer;
+    var t = ev().timer;
     t.phase = "presentation";
     t.durationSec = t.presentationPreset || 360;
     t.remainingSec = t.presentationPreset || 360;
     t.running = true;
     t.endTime = Date.now() + (t.remainingSec*1000);
-    if (state.teams[liveP] && !state.teams[liveP].startedAt){
-      state.teams[liveP].startedAt = Date.now();
+    if (ev().teams[liveP] && !ev().teams[liveP].startedAt){
+      ev().teams[liveP].startedAt = Date.now();
     }
     saveState(render);
   }
   function setPreset(kind, sec){
-    if (kind==="presentation") state.timer.presentationPreset = sec;
-    else state.timer.qnaPreset = sec;
-    if (state.timer.phase==="qna" && kind==="qna" && !state.timer.running){
-      state.timer.remainingSec = sec; state.timer.durationSec = sec;
+    if (kind==="presentation") ev().timer.presentationPreset = sec;
+    else ev().timer.qnaPreset = sec;
+    if (ev().timer.phase==="qna" && kind==="qna" && !ev().timer.running){
+      ev().timer.remainingSec = sec; ev().timer.durationSec = sec;
     }
     saveState(render);
   }
   function toggleRun(){
-    var t = state.timer;
+    var t = ev().timer;
     if (t.phase!=="presentation" && t.phase!=="qna") return;
     if (t.running){
       t.remainingSec = Math.max(0, (t.endTime - Date.now())/1000);
@@ -717,7 +769,7 @@
     saveState(render);
   }
   function nextPhase(){
-    var t = state.timer;
+    var t = ev().timer;
     if (t.phase==="presentation"){
       t.phase = "qna";
       t.remainingSec = t.qnaPreset || 600;
@@ -729,7 +781,7 @@
     }
   }
   function addExtra(idx){
-    var t = state.timer;
+    var t = ev().timer;
     if (t.extraUsed[idx]) return;
     if (t.phase!=="presentation" && t.phase!=="qna") return;
     t.extraUsed[idx] = true;
@@ -739,8 +791,8 @@
     t.durationSec += sec;
     t.extraLog.push("+"+Math.round(sec/60)+" min");
     var liveP = getLivePid();
-    if (liveP && state.teams[liveP]){
-      var team = state.teams[liveP];
+    if (liveP && ev().teams[liveP]){
+      var team = ev().teams[liveP];
       team.extraSec = (team.extraSec||0) + sec;
       team.extraLog = (team.extraLog||[]).concat(["+"+Math.round(sec/60)+" min"]);
     }
@@ -749,8 +801,8 @@
   function markDoneAndNext(){
     var liveP = getLivePid();
     if (liveP){
-      state.teams[liveP].status = "done";
-      state.teams[liveP].endedAt = Date.now();
+      ev().teams[liveP].status = "done";
+      ev().teams[liveP].endedAt = Date.now();
     }
     syncLiveTracking(); // cascades P_ID+1 into Live, next into Lab2, next into Lab1
     saveState(render);
@@ -758,19 +810,19 @@
   function skipCurrentTeam(){
     var liveP = getLivePid();
     if (!liveP) return;
-    state.teams[liveP].status = "skipped";
-    state.teams[liveP].endedAt = Date.now();
+    ev().teams[liveP].status = "skipped";
+    ev().teams[liveP].endedAt = Date.now();
     // move to the end of the calling order so it doesn't block anyone if re-queued later
-    state.queueOrder = state.queueOrder.filter(function(p){ return p!==liveP; }).concat([liveP]);
+    ev().queueOrder = ev().queueOrder.filter(function(p){ return p!==liveP; }).concat([liveP]);
     syncLiveTracking();
     saveState(render);
   }
   function requeueTeam(pid){
     pid = parseInt(pid,10);
-    if (!state.teams[pid]) return;
-    state.teams[pid].status = "pending";
-    state.teams[pid].startedAt = null;
-    state.teams[pid].endedAt = null;
+    if (!ev().teams[pid]) return;
+    ev().teams[pid].status = "pending";
+    ev().teams[pid].startedAt = null;
+    ev().teams[pid].endedAt = null;
     syncLiveTracking();
     saveState(render);
   }
@@ -778,8 +830,8 @@
     // Emergency override: force a specific team to be called next (Live),
     // for cases like a wrong call, a technical error, or an out-of-order arrival.
     pid = parseInt(pid,10);
-    if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
-    state.queueOrder = [pid].concat(state.queueOrder.filter(function(p){ return p!==pid; }));
+    if (!ev().teams[pid] || ev().teams[pid].status!=="pending") return;
+    ev().queueOrder = [pid].concat(ev().queueOrder.filter(function(p){ return p!==pid; }));
     syncLiveTracking();
     saveState(render);
   }
@@ -788,9 +840,9 @@
     // to call them forward first. Same underlying status as "Skip", just
     // reachable from anywhere — recall it later from Admin tools if needed.
     pid = parseInt(pid,10);
-    if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
-    state.teams[pid].status = "skipped";
-    state.teams[pid].endedAt = Date.now();
+    if (!ev().teams[pid] || ev().teams[pid].status!=="pending") return;
+    ev().teams[pid].status = "skipped";
+    ev().teams[pid].endedAt = Date.now();
     syncLiveTracking();
     saveState(render);
   }
@@ -799,14 +851,14 @@
     // to waiting in its classroom, reinserted in normal P_ID order among the
     // other still-waiting teams (not penalized to the very end of the line).
     pid = parseInt(pid,10);
-    if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
-    var without = state.queueOrder.filter(function(p){ return p!==pid; });
+    if (!ev().teams[pid] || ev().teams[pid].status!=="pending") return;
+    var without = ev().queueOrder.filter(function(p){ return p!==pid; });
     var idx = -1;
     for (var i=0;i<without.length;i++){
-      if (without[i] > pid && state.teams[without[i]] && state.teams[without[i]].status==="pending"){ idx = i; break; }
+      if (without[i] > pid && ev().teams[without[i]] && ev().teams[without[i]].status==="pending"){ idx = i; break; }
     }
     if (idx === -1) without.push(pid); else without.splice(idx, 0, pid);
-    state.queueOrder = without;
+    ev().queueOrder = without;
     syncLiveTracking();
     saveState(render);
   }
@@ -814,21 +866,21 @@
     var input = document.getElementById("noticeInput");
     var val = input.value.trim();
     if (!val) return;
-    state.notice = { text: val, ts: Date.now() };
+    ev().notice = { text: val, ts: Date.now() };
     input.value = "";
     saveState(render);
   }
   function dismissNotice(){
-    state.notice = null;
+    ev().notice = null;
     saveState(render);
   }
   function startAward(){
-    state.awardMode = true;
-    state.notice = { text: "Award Ceremony — please proceed to the Presentation Area", ts: Date.now() };
+    ev().awardMode = true;
+    ev().notice = { text: "Award Ceremony — please proceed to the Presentation Area", ts: Date.now() };
     saveState(render);
   }
   function toggleLunch(){
-    state.lunch.active = !state.lunch.active;
+    ev().lunch.active = !ev().lunch.active;
     saveState(render);
   }
   function resetAll(){
@@ -858,6 +910,7 @@
 
   // ---------------- render ----------------
   function render(){
+    renderEventChrome();
     renderNotice();
     renderHero();
     renderQueue();
@@ -866,19 +919,38 @@
     renderExtraLog();
     renderSkippedList();
     document.getElementById("controlPanel").style.display = role==="control" ? "block" : "none";
-    document.getElementById("btnLunch").textContent = state.lunch.active ? "End Lunch Break" : "Start Lunch Break";
+    document.getElementById("btnLunch").textContent = ev().lunch.active ? "End Lunch Break" : "Start Lunch Break";
+  }
+
+  function renderEventChrome(){
+    var meta = evMeta();
+    document.getElementById("brandTitle").textContent = meta.label + " — Presentation Control";
+    document.title = meta.label + " — Live Presentation Control";
+    var footer = document.getElementById("footerNote");
+    if (footer){
+      footer.innerHTML = "Microtek College of Management &amp; Technology (Sm Campus) — "+esc(meta.label)+", "+esc(meta.date);
+    }
+    var sel = document.getElementById("eventSelect");
+    if (sel && sel.value !== state.activeEvent) sel.value = state.activeEvent;
+  }
+
+  function switchEvent(newEvent){
+    if (!EVENTS[newEvent] || newEvent===state.activeEvent) return;
+    state.activeEvent = newEvent;
+    syncLiveTracking(); // make sure the newly-active event's timer state is sane
+    saveState(render);
   }
 
   function renderNotice(){
     var bar = document.getElementById("noticeBar");
     var award = document.getElementById("awardBanner");
     var lunch = document.getElementById("lunchBanner");
-    award.classList.toggle("show", !!state.awardMode);
-    lunch.classList.toggle("show", !!(state.lunch && state.lunch.active));
-    if (state.notice){
+    award.classList.toggle("show", !!ev().awardMode);
+    lunch.classList.toggle("show", !!(ev().lunch && ev().lunch.active));
+    if (ev().notice){
       bar.classList.add("show");
-      document.getElementById("noticeText").textContent = state.notice.text;
-      var secs = Math.round((Date.now()-state.notice.ts)/1000);
+      document.getElementById("noticeText").textContent = ev().notice.text;
+      var secs = Math.round((Date.now()-ev().notice.ts)/1000);
       var ago = secs<60 ? secs+"s ago" : Math.round(secs/60)+"m ago";
       document.getElementById("noticeTime").textContent = ago;
     } else {
@@ -890,12 +962,12 @@
   function renderHero(){
     var hero = document.getElementById("hero");
     var content = document.getElementById("heroContent");
-    var t = state.timer;
+    var t = ev().timer;
     var pid = getLivePid();
 
-    if (!pid || !state.teams[pid]){
+    if (!pid || !ev().teams[pid]){
       hero.classList.remove("live");
-      var allDone = Object.values(state.teams).every(function(tm){ return tm.status!=="pending"; });
+      var allDone = Object.values(ev().teams).every(function(tm){ return tm.status!=="pending"; });
       content.innerHTML =
         '<div class="hero-top"><span class="hero-empty-label">Live</span></div>'+
         '<div class="empty-hero"><div class="big">'+(allDone ? "All teams have presented" : "No team is up right now")+'</div>'+
@@ -905,7 +977,7 @@
     }
 
     hero.classList.add("live");
-    var team = state.teams[pid];
+    var team = ev().teams[pid];
     var awaiting = t.phase==="awaiting";
     var rem = remainingSeconds();
     var over = !awaiting && rem <= 0;
@@ -985,8 +1057,8 @@
   // team actually changes.
   function updateHeroTimer(){
     var pid = getLivePid();
-    if (!pid || !state.teams[pid]) return;
-    var t = state.timer;
+    if (!pid || !ev().teams[pid]) return;
+    var t = ev().timer;
     if (t.phase==="awaiting") return; // "Ready" needs no per-tick update
 
     var rem = remainingSeconds();
@@ -1019,7 +1091,7 @@
     document.getElementById("queueCount").textContent = count+" waiting outside";
 
     function chip(pid, etaNote){
-      var team = state.teams[pid];
+      var team = ev().teams[pid];
       var eta = etas[pid] ? '<div class="sub" style="margin-top:2px;">~ETA '+fmtClockTime(etas[pid])+'</div>' : "";
       return '<div class="team-chip"><div class="info"><div class="nm">'+esc(team.teamName)+'</div>'+
         '<div class="sub">P_ID '+team.pid+' · '+esc(team.teamId)+' · '+esc(team.leader)+'</div>'+eta+'</div></div>';
@@ -1031,7 +1103,7 @@
 
   function renderSeats(){
     var groups = {};
-    Object.values(state.teams).forEach(function(t){
+    Object.values(ev().teams).forEach(function(t){
       groups[t.seat] = groups[t.seat] || [];
       groups[t.seat].push(t);
     });
@@ -1074,7 +1146,7 @@
   }
 
   function renderExtraLog(){
-    var withExtra = Object.values(state.teams).filter(function(t){return t.extraSec>0;})
+    var withExtra = Object.values(ev().teams).filter(function(t){return t.extraSec>0;})
       .sort(function(a,b){return a.pid-b.pid;});
     var el = document.getElementById("extraLogList");
     if (!withExtra.length){
@@ -1091,7 +1163,7 @@
   function renderSkippedList(){
     var el = document.getElementById("skippedList");
     if (!el) return;
-    var recallable = Object.values(state.teams)
+    var recallable = Object.values(ev().teams)
       .filter(function(t){ return t.status==="skipped" || t.status==="done"; })
       .sort(function(a,b){return a.pid-b.pid;});
     if (!recallable.length){
@@ -1107,7 +1179,7 @@
   }
 
   function renderStats(){
-    var all = Object.values(state.teams);
+    var all = Object.values(ev().teams);
     var done = all.filter(function(t){return t.status==="done";}).length;
     var skipped = all.filter(function(t){return t.status==="skipped";}).length;
     var waiting = getClassroomTeams().length;
@@ -1128,7 +1200,7 @@
       case "startTimer": startTimer(); break;
       case "toggleRun": toggleRun(); break;
       case "nextPhase":
-        if (state.timer.phase==="qna"){
+        if (ev().timer.phase==="qna"){
           askConfirm("Mark done", "Mark this team as done and call the next team? Make sure Q&A has actually finished.").then(function(ok){
             if (ok) nextPhase();
           });
@@ -1177,6 +1249,17 @@
   document.getElementById("btnDismissNotice").addEventListener("click", dismissNotice);
   document.getElementById("btnAward").addEventListener("click", startAward);
   document.getElementById("btnLunch").addEventListener("click", toggleLunch);
+  document.getElementById("eventSelect").addEventListener("change", function(){
+    var selectEl = this;
+    var chosen = selectEl.value;
+    var target = EVENTS[chosen];
+    if (!target || chosen===state.activeEvent) return;
+    var prevLabel = evMeta().label;
+    askConfirm("Switch active event", "Switch everyone's screen from "+prevLabel+" to "+target.label+"? Both events' progress stays saved — you can switch back any time.").then(function(ok){
+      if (ok){ switchEvent(chosen); }
+      else { selectEl.value = state.activeEvent; }
+    });
+  });
   document.getElementById("btnReset").addEventListener("click", function(){
     askText("Start the real event — full reset", "This wipes ALL progress: every team goes back to pending, all completed/skipped/absent counts return to 0, timers and notices clear. This cannot be undone. Type the reset code 10259 to confirm.", "Reset code", "text").then(function(code){
       if (code === null) return;
