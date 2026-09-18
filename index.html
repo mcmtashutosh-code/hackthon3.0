@@ -84,6 +84,26 @@
     color:#8fe0b6;padding:14px 22px;text-align:center;font-weight:800;font-size:15px;letter-spacing:.03em;
   }
   .lunch-banner.show{display:block;}
+
+  .ticker-bar{
+    background:var(--amber-soft);border-bottom:1px solid var(--amber);
+    overflow:hidden;white-space:nowrap;position:relative;
+  }
+  .ticker-track{
+    display:inline-flex;padding:7px 0;
+    animation:ticker-scroll 26s linear infinite;
+  }
+  .ticker-track span{
+    padding:0 36px;color:#f4dd9e;font-size:12.5px;font-weight:700;
+    letter-spacing:.02em;flex-shrink:0;
+  }
+  @keyframes ticker-scroll{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .ticker-track{ animation:none; }
+  }
   .lock{
     display:flex;align-items:center;justify-content:center;gap:8px;
   }
@@ -160,6 +180,11 @@
 
   .empty-hero{padding:36px 0 10px;text-align:center;color:var(--muted-2);}
   .empty-hero .big{font-size:17px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+  .welcome-big{
+    font-weight:800;font-size:54px;line-height:1;letter-spacing:-.02em;
+    background:linear-gradient(90deg,var(--gold),#f6e3ad);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
 
   .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
   .btn{
@@ -236,6 +261,13 @@
   details.admintools{margin-top:18px;}
   details.admintools summary{color:var(--muted-2);font-size:12px;cursor:pointer;}
   .footer-note{text-align:center;color:var(--muted-2);font-size:11.5px;margin-top:30px;}
+  .credit-bar{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    background:linear-gradient(0deg,#0b1220 70%,rgba(11,18,32,0));
+    padding:6px 12px 8px;text-align:center;
+    font-size:10.5px;color:var(--muted-2);pointer-events:none;
+  }
+  .credit-bar b{color:var(--muted);font-weight:700;}
 </style>
 </head>
 <body>
@@ -253,6 +285,10 @@
       <button id="btnControl">Control Room</button>
     </div>
   </div>
+</div>
+
+<div class="ticker-bar">
+  <div class="ticker-track" id="tickerTrack"></div>
 </div>
 
 <div class="notice" id="noticeBar">
@@ -299,6 +335,15 @@
           Switching this changes what every Display screen and Control Room shows,
           for everyone, immediately. Each event keeps its own separate queue, timer,
           and progress — switching and switching back loses nothing.
+        </div>
+
+        <p class="panel-title section-gap">Emergency contact ticker <span class="count">always on screen</span></p>
+        <div class="composer">
+          <input id="tickerInput" type="text" placeholder="Emergency contact line…" maxlength="200">
+          <button class="btn primary small" id="btnSetTicker">Update</button>
+        </div>
+        <div class="legend" style="margin-top:6px;">
+          This line scrolls at the top of every screen at all times, for everyone.
         </div>
 
         <p class="panel-title section-gap">Notice board</p>
@@ -359,8 +404,9 @@
   </div>
 
   <p class="footer-note" id="footerNote">Microtek College of Management &amp; Technology (Sm Campus) — InnoHack 3.0, 18/09/2026</p>
-  <p class="footer-note" style="margin-top:6px;">Designed and developed by <b style="color:var(--muted);">Ashutosh Dubey</b></p>
 </div>
+
+<div class="credit-bar">Designed and developed by <b>Ashutosh Dubey</b></div>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-box">
@@ -386,6 +432,7 @@
   var SUPABASE_ANON_KEY = "sb_publishable_6rmZP4Mn5AwhFCtuMdgKiw_CQONUaOA";
   var ROW_ID = "main"; // single shared row in hackathon_state
   var DEFAULT_PASSWORD = "innohack2026"; // used only the very first time, before anyone changes it
+  var DEFAULT_TICKER = "In case of any emergency, kindly contact Vipul Sir, Abhijeet Sir, or Mrigank Sir.";
 
   var supa = (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -436,6 +483,7 @@
         forge: makeEventState(ROSTER_FORGE)
       },
       adminPassword: DEFAULT_PASSWORD, // shared across both events
+      emergencyTicker: DEFAULT_TICKER, // shared across both events; admin-editable
       updatedAt: Date.now()
     };
   }
@@ -476,6 +524,7 @@
           applyingRemote = true;
           state = remoteState;
           if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD; // older saved rows
+          if (!state.emergencyTicker) state.emergencyTicker = DEFAULT_TICKER;
           if (!state.activeEvent) state.activeEvent = "innohack";
           lastKnownUpdatedAt = state.updatedAt || Date.now();
           applyingRemote = false;
@@ -501,16 +550,32 @@
     if (!hasSupabase) return;
     if (writeInFlight){ writePending = true; return; }
     writeInFlight = true;
-    supa.from("hackathon_state")
-      .upsert({ id: ROW_ID, state: state, updated_at: new Date().toISOString() })
-      .then(function(res){
-        if (res.error) console.error("supabase write failed", res.error);
-      })
-      .catch(function(err){ console.error("supabase write failed", err); })
-      .then(function(){
-        writeInFlight = false;
-        if (writePending){ writePending = false; persistState(); }
-      });
+    // Safety net: if the network call somehow never settles (a dropped
+    // connection, a browser quirk), don't let writeInFlight get stuck
+    // forever and silently block every future write — release it after
+    // 6s regardless, and let the next click's write go through normally.
+    var safetyTimer = setTimeout(function(){
+      writeInFlight = false;
+    }, 6000);
+    try {
+      supa.from("hackathon_state")
+        .upsert({ id: ROW_ID, state: state, updated_at: new Date().toISOString() })
+        .then(function(res){
+          if (res.error) console.error("supabase write failed", res.error);
+        })
+        .catch(function(err){
+          console.error("supabase write failed", err);
+        })
+        .then(function(){
+          clearTimeout(safetyTimer);
+          writeInFlight = false;
+          if (writePending){ writePending = false; persistState(); }
+        });
+    } catch (err){
+      console.error("supabase write threw synchronously", err);
+      clearTimeout(safetyTimer);
+      writeInFlight = false;
+    }
     syncTeamsTable();
   }
 
@@ -593,6 +658,7 @@
             lastKnownUpdatedAt = incomingUpdatedAt;
             state = incoming;
             if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD;
+            if (!state.emergencyTicker) state.emergencyTicker = DEFAULT_TICKER;
             if (!state.activeEvent) state.activeEvent = "innohack";
             render();
           }
@@ -862,6 +928,13 @@
     syncLiveTracking();
     saveState(render);
   }
+  function updateTicker(){
+    var input = document.getElementById("tickerInput");
+    var val = input.value.trim();
+    if (!val) return;
+    state.emergencyTicker = val;
+    saveState(render);
+  }
   function postNotice(){
     var input = document.getElementById("noticeInput");
     var val = input.value.trim();
@@ -911,6 +984,7 @@
   // ---------------- render ----------------
   function render(){
     renderEventChrome();
+    renderTicker();
     renderNotice();
     renderHero();
     renderQueue();
@@ -920,6 +994,19 @@
     renderSkippedList();
     document.getElementById("controlPanel").style.display = role==="control" ? "block" : "none";
     document.getElementById("btnLunch").textContent = ev().lunch.active ? "End Lunch Break" : "Start Lunch Break";
+  }
+
+  var lastRenderedTicker = null;
+  function renderTicker(){
+    var track = document.getElementById("tickerTrack");
+    if (!track) return;
+    var text = state.emergencyTicker || DEFAULT_TICKER;
+    if (text === lastRenderedTicker) return; // avoid restarting the CSS animation every render
+    lastRenderedTicker = text;
+    track.innerHTML = "<span>"+esc(text)+"</span><span>"+esc(text)+"</span>";
+    // reset the field admin edits it from, only if they're not actively typing in it
+    var input = document.getElementById("tickerInput");
+    if (input && document.activeElement !== input) input.value = text;
   }
 
   function renderEventChrome(){
@@ -1029,7 +1116,7 @@
     }
 
     var timerHtml = awaiting
-      ? '<div class="timer-display" id="timerDisplay" style="font-size:44px;color:var(--muted);">Ready</div>'
+      ? '<div class="welcome-big" id="timerDisplay">Welcome!</div>'
       : '<div class="timer-display '+timerClass+'" id="timerDisplay">'+(over?"+":"")+ fmtTime(Math.abs(rem)) +'</div>';
 
     content.innerHTML =
@@ -1244,6 +1331,8 @@
     }
   });
 
+  document.getElementById("btnSetTicker").addEventListener("click", updateTicker);
+  document.getElementById("tickerInput").addEventListener("keydown", function(e){ if(e.key==="Enter") updateTicker(); });
   document.getElementById("btnPostNotice").addEventListener("click", postNotice);
   document.getElementById("noticeInput").addEventListener("keydown", function(e){ if(e.key==="Enter") postNotice(); });
   document.getElementById("btnDismissNotice").addEventListener("click", dismissNotice);
