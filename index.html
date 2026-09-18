@@ -425,6 +425,7 @@
   var writeInFlight = false;
   var writePending = false;
   var applyingRemote = false;
+  var lastKnownUpdatedAt = 0; // guards against re-rendering our own realtime echo
 
   function loadState(cb){
     if (!hasSupabase){ if (cb) cb(); return; }
@@ -436,6 +437,7 @@
           applyingRemote = true;
           state = remoteState;
           if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD; // older saved rows
+          lastKnownUpdatedAt = state.updatedAt || Date.now();
           applyingRemote = false;
         } else {
           // no row yet, or an empty placeholder row (e.g. the '{}' the SQL
@@ -455,6 +457,7 @@
 
   function persistState(){
     state.updatedAt = Date.now();
+    lastKnownUpdatedAt = state.updatedAt; // so our own realtime echo doesn't re-render
     if (!hasSupabase) return;
     if (writeInFlight){ writePending = true; return; }
     writeInFlight = true;
@@ -534,6 +537,9 @@
           if (writeInFlight) return; // our own write in flight; the poll/next event will settle it
           if (payload.new && payload.new.state && payload.new.state.teams &&
               Object.keys(payload.new.state.teams).length > 0){
+            var incomingUpdatedAt = payload.new.state.updatedAt || 0;
+            if (incomingUpdatedAt <= lastKnownUpdatedAt) return; // our own echo — buttons stay put
+            lastKnownUpdatedAt = incomingUpdatedAt;
             state = payload.new.state;
             if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD;
             render();
