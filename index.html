@@ -304,14 +304,17 @@
           <button class="btn" id="btnLunch">Start Lunch Break</button>
         </div>
         <details class="admintools">
-          <summary>Admin tools — skipped teams &amp; emergency override</summary>
+          <summary>Admin tools — recall a team, password, emergency override</summary>
           <div class="section-gap">
-            <p class="panel-title">Skipped teams</p>
+            <p class="panel-title">Recall a team (done or skipped, by mistake)</p>
             <div id="skippedList"></div>
           </div>
           <div class="legend section-gap">
-            To call a team out of the normal P_ID order (e.g. to fix an error), use the
-            <b>"↑ Call next"</b> button next to any waiting team in the Classrooms list below.
+            To bring a different team forward instead of the normal P_ID order — for
+            example the team about to go Live isn't ready and you want someone else
+            up first — use the <b>"↑ Call next"</b> button next to any waiting team in
+            the Classrooms list below. The team that was about to go Live simply moves
+            back into Lab 2 or Lab 1 waiting, nothing is lost.
           </div>
           <div class="btn-row section-gap">
             <button class="btn danger small" id="btnReset">Reset entire queue</button>
@@ -802,13 +805,20 @@
     saveState(render);
   }
   function changePassword(){
-    askText("Change control room password", "Set a new password. Everyone who needs to operate the control room will need this new password.", "New password", "text").then(function(newPass){
-      if (newPass === null) return;
-      newPass = newPass.trim();
-      if (!newPass){ showAlert("Password not changed", "Password can't be empty."); return; }
-      state.adminPassword = newPass;
-      saveState(function(){
-        showAlert("Password changed", "The control room password has been updated for everyone.");
+    askText("Change control room password", "Enter the CURRENT password to confirm it's you.", "Current password", "password").then(function(oldPass){
+      if (oldPass === null) return;
+      if (oldPass !== state.adminPassword){
+        showAlert("Incorrect password", "That's not the current password — nothing was changed.");
+        return;
+      }
+      askText("Set new password", "Now enter the new password. Everyone who needs to operate the control room will need it.", "New password", "text").then(function(newPass){
+        if (newPass === null) return;
+        newPass = newPass.trim();
+        if (!newPass){ showAlert("Password not changed", "Password can't be empty."); return; }
+        state.adminPassword = newPass;
+        saveState(function(){
+          showAlert("Password changed", "The control room password has been updated for everyone.");
+        });
       });
     });
   }
@@ -913,24 +923,58 @@
     }
 
     var timerHtml = awaiting
-      ? '<div class="timer-display" style="font-size:44px;color:var(--muted);">Ready</div>'
-      : '<div class="timer-display '+timerClass+'">'+(over?"+":"")+ fmtTime(Math.abs(rem)) +'</div>';
+      ? '<div class="timer-display" id="timerDisplay" style="font-size:44px;color:var(--muted);">Ready</div>'
+      : '<div class="timer-display '+timerClass+'" id="timerDisplay">'+(over?"+":"")+ fmtTime(Math.abs(rem)) +'</div>';
 
     content.innerHTML =
       '<div class="hero-top">'+
         '<span class="hero-label">Live</span>'+
-        '<span class="phase-pill '+phaseClass+'">'+phaseLabel+'</span>'+
+        '<span class="phase-pill '+phaseClass+'" id="phasePill">'+phaseLabel+'</span>'+
       '</div>'+
       '<div class="team-name">'+esc(team.teamName)+'</div>'+
       '<div class="team-meta"><span class="pid">P_ID '+team.pid+' · '+esc(team.teamId)+'</span> · Led by '+esc(team.leader)+' · Seat '+esc(team.seat)+'</div>'+
       '<div class="timer-row">'+
         timerHtml+
-        '<div><div class="timer-sub">'+(awaiting ? (role==="control" ? "Waiting for your OK to start" : "Waiting to begin") : (t.running?"Running":"Paused"))+'</div>'+
+        '<div><div class="timer-sub" id="timerSub">'+(awaiting ? (role==="control" ? "Waiting for your OK to start" : "Waiting to begin") : (t.running?"Running":"Paused"))+'</div>'+
         (t.extraLog.length ? '<div class="extra-log">Extra added: '+t.extraLog.join(", ")+'</div>' : '')+
         '</div>'+
       '</div>'+
-      (awaiting ? '' : '<div class="progress-track"><div class="progress-fill '+(over?"over":(t.phase==="qna"?"qna":""))+'" style="width:'+pct+'%;"></div></div>')+
+      (awaiting ? '' : '<div class="progress-track"><div class="progress-fill '+(over?"over":(t.phase==="qna"?"qna":""))+'" id="progressFill" style="width:'+pct+'%;"></div></div>')+
       controls;
+  }
+
+  // Fast per-tick update: touches ONLY the timer digits, progress bar and
+  // phase pill — never the buttons — so a click in progress can never be
+  // interrupted by the DOM being rebuilt underneath it. renderHero() (above)
+  // still runs on every real state change (a button click, a poll, a
+  // realtime update) and rebuilds the buttons correctly when the phase or
+  // team actually changes.
+  function updateHeroTimer(){
+    var pid = getLivePid();
+    if (!pid || !state.teams[pid]) return;
+    var t = state.timer;
+    if (t.phase==="awaiting") return; // "Ready" needs no per-tick update
+
+    var rem = remainingSeconds();
+    var over = rem <= 0;
+    var pct = t.durationSec>0 ? Math.max(0, Math.min(100, 100*(1-(rem/t.durationSec)))) : 0;
+    var timerClass = over ? "over" : (rem<=30 ? "warn" : "");
+
+    var timerEl = document.getElementById("timerDisplay");
+    if (timerEl){
+      timerEl.className = "timer-display " + timerClass;
+      timerEl.textContent = (over?"+":"") + fmtTime(Math.abs(rem));
+    }
+    var fillEl = document.getElementById("progressFill");
+    if (fillEl){
+      fillEl.style.width = pct + "%";
+      fillEl.className = "progress-fill " + (over ? "over" : (t.phase==="qna" ? "qna" : ""));
+    }
+    var pillEl = document.getElementById("phasePill");
+    if (pillEl && over){
+      pillEl.className = "phase-pill over";
+      pillEl.textContent = "Overtime";
+    }
   }
 
   function renderQueue(){
@@ -1007,16 +1051,18 @@
   function renderSkippedList(){
     var el = document.getElementById("skippedList");
     if (!el) return;
-    var skipped = Object.values(state.teams).filter(function(t){return t.status==="skipped";})
+    var recallable = Object.values(state.teams)
+      .filter(function(t){ return t.status==="skipped" || t.status==="done"; })
       .sort(function(a,b){return a.pid-b.pid;});
-    if (!skipped.length){
-      el.innerHTML = '<div class="slot-empty">No skipped teams</div>';
+    if (!recallable.length){
+      el.innerHTML = '<div class="slot-empty">No done or skipped teams yet</div>';
       return;
     }
-    el.innerHTML = skipped.map(function(t){
-      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(t.teamName)+'</div>'+
+    el.innerHTML = recallable.map(function(t){
+      var tag = t.status==="done" ? "Done" : "Skipped";
+      return '<div class="team-chip"><div class="info"><div class="nm">'+esc(t.teamName)+' <span style="color:var(--muted-2);font-weight:500;">— '+tag+'</span></div>'+
         '<div class="sub">P_ID '+t.pid+' · '+esc(t.teamId)+' · '+esc(t.leader)+'</div></div>'+
-        '<button class="btn small" data-action="requeue" data-pid="'+t.pid+'">Re-add to queue</button></div>';
+        '<button class="btn small" data-action="requeue" data-pid="'+t.pid+'">Recall to queue</button></div>';
     }).join("");
   }
 
@@ -1041,7 +1087,15 @@
     switch(action){
       case "startTimer": startTimer(); break;
       case "toggleRun": toggleRun(); break;
-      case "nextPhase": nextPhase(); break;
+      case "nextPhase":
+        if (state.timer.phase==="qna"){
+          askConfirm("Mark done", "Mark this team as done and call the next team? Make sure Q&A has actually finished.").then(function(ok){
+            if (ok) nextPhase();
+          });
+        } else {
+          nextPhase();
+        }
+        break;
       case "extra": addExtra(parseInt(btn.getAttribute("data-idx"),10)); break;
       case "skip":
         askConfirm("Skip this team", "Mark the current team as skipped (e.g. absent or a call error)? They can be re-added from Admin tools later.").then(function(ok){
@@ -1053,7 +1107,11 @@
           if (ok) markDoneAndNext();
         });
         break;
-      case "requeue": requeueTeam(pid); break;
+      case "requeue":
+        askConfirm("Recall this team", "Put this team back into the waiting queue? You'll call them again from the start when it's their turn. (Any extra time already recorded for them stays on record.)").then(function(ok){
+          if (ok) requeueTeam(pid);
+        });
+        break;
       case "moveToFront":
         askConfirm("Call this team next (override)", "This overrides the normal P_ID order and makes this team Live next. Use this only to fix an error. Continue?").then(function(ok){
           if (ok) moveToFront(pid);
@@ -1119,9 +1177,10 @@
   // ---------------- clock + realtime sync ----------------
   setInterval(function(){ document.getElementById("clock").textContent = fmtClock(); }, 1000);
 
-  // fast local tick for the live timer display (doesn't touch the network)
+  // fast local tick for the live timer display (doesn't touch the network,
+  // and never rebuilds the buttons — see updateHeroTimer() above)
   setInterval(function(){
-    if (getLivePid()) renderHero();
+    if (getLivePid()) updateHeroTimer();
   }, 250);
 
   // initial load — subscribes to realtime updates via the db capability;
