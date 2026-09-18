@@ -364,8 +364,8 @@
   // SUPABASE SETUP — fill these two in before deploying.
   // Project Settings → API → "Project URL" and "anon public" key.
   // ================================================================
-  var SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-  var SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+  var SUPABASE_URL = "https://glqdatjfylatihsknhab.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_6rmZP4Mn5AwhFCtuMdgKiw_CQONUaOA";
   var ROW_ID = "main"; // single shared row in hackathon_state
 
   var supa = (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1)
@@ -1032,16 +1032,15 @@
   });
 
   // ---------------- auto-refresh (display screens) ----------------
-  // Belt-and-suspenders: the platform also reloads every open view the
-  // instant the control room publishes, but a plain timed reload guarantees
-  // every display — any device, any browser, no login — is never more than
-  // a few seconds stale, exactly as requested for tomorrow's screens.
+  // A SOFT refresh: just re-fetch the row and re-render, never a full page
+  // reload — so it can never interrupt a click, a modal, or typing. Realtime
+  // already pushes updates almost instantly; this is only the safety net.
   var autoRefreshTimer = null;
   var AUTO_REFRESH_MS = 4000;
   function startAutoRefresh(){
     stopAutoRefresh();
     autoRefreshTimer = setInterval(function(){
-      if (role==="display") window.location.reload();
+      if (role==="display" && hasSupabase) loadState(render);
     }, AUTO_REFRESH_MS);
   }
   function stopAutoRefresh(){
