@@ -55,6 +55,13 @@
     background:var(--panel);color:var(--muted);border:none;padding:8px 14px;font-size:12.5px;font-weight:600;
   }
   .role-toggle button.active{background:var(--gold);color:#221a08;}
+  .btn-share{
+    display:flex;align-items:center;gap:6px;background:var(--panel-alt);color:var(--text);
+    border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12.5px;
+    font-weight:600;cursor:pointer;
+  }
+  .btn-share:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-share svg{width:14px;height:14px;flex-shrink:0;}
 
   /* ---------- Notice ribbon ---------- */
   .notice{
@@ -280,6 +287,10 @@
   <div class="topbar-right">
     <span class="clock" id="clock">--:--:--</span>
     <span id="syncBadge" style="display:none;font-size:11px;color:var(--muted-2);border:1px solid var(--border);padding:4px 9px;border-radius:6px;">Local only — Supabase not configured</span>
+    <button class="btn-share" id="btnShare" title="Share this link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"></line><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"></line></svg>
+      Share
+    </button>
     <div class="role-toggle">
       <button id="btnDisplay" class="active">Display</button>
       <button id="btnControl">Control Room</button>
@@ -928,6 +939,26 @@
     syncLiveTracking();
     saveState(render);
   }
+  function shareApp(){
+    var url = window.location.href;
+    var meta = evMeta();
+    var title = meta.label + " — Live Presentation Tracker";
+    var text = "Follow live queue & timer updates for " + meta.label + " here:";
+    if (navigator.share){
+      navigator.share({ title: title, text: text, url: url }).catch(function(){ /* user cancelled — ignore */ });
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        showAlert("Link copied!", "The link has been copied to your clipboard — paste it anywhere to share.");
+      }).catch(function(){
+        showAlert("Share this link", url);
+      });
+      return;
+    }
+    showAlert("Share this link", url);
+  }
+
   function updateTicker(){
     var input = document.getElementById("tickerInput");
     var val = input.value.trim();
@@ -1331,6 +1362,7 @@
     }
   });
 
+  document.getElementById("btnShare").addEventListener("click", shareApp);
   document.getElementById("btnSetTicker").addEventListener("click", updateTicker);
   document.getElementById("tickerInput").addEventListener("keydown", function(e){ if(e.key==="Enter") updateTicker(); });
   document.getElementById("btnPostNotice").addEventListener("click", postNotice);
