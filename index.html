@@ -315,6 +315,7 @@
           </div>
           <div class="btn-row section-gap">
             <button class="btn danger small" id="btnReset">Reset entire queue</button>
+            <button class="btn small" id="btnChangePassword">Change control room password</button>
           </div>
         </details>
       </div>
@@ -367,6 +368,7 @@
   var SUPABASE_URL = "https://glqdatjfylatihsknhab.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_6rmZP4Mn5AwhFCtuMdgKiw_CQONUaOA";
   var ROW_ID = "main"; // single shared row in hackathon_state
+  var DEFAULT_PASSWORD = "innohack2026"; // used only the very first time, before anyone changes it
 
   var supa = (window.supabase && SUPABASE_URL.indexOf("YOUR-PROJECT") === -1)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -399,6 +401,7 @@
       notice: null,
       awardMode: false,
       lunch: { active: false },
+      adminPassword: DEFAULT_PASSWORD,
       updatedAt: Date.now()
     };
   }
@@ -407,7 +410,6 @@
   syncLiveTracking(); // put team P_ID 1 into "awaiting start" from the very first render
   var role = "display"; // display | control
   var controlUnlocked = false; // in-memory only
-  var ADMIN_PASSWORD = "innohack2026";
   var AVG_TEAM_SEC = 900; // ~15 min per team without extra time, used for ETA estimates
 
   // ---------------- storage: Supabase (shared Postgres row + Realtime) ----------------
@@ -428,6 +430,7 @@
         if (res.data && res.data.state){
           applyingRemote = true;
           state = res.data.state;
+          if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD; // older saved rows
           applyingRemote = false;
         } else if (res.error && res.error.code === "PGRST116"){
           // no row yet — seed it
@@ -485,6 +488,7 @@
           if (writeInFlight) return; // our own write in flight; the poll/next event will settle it
           if (payload.new && payload.new.state){
             state = payload.new.state;
+            if (!state.adminPassword) state.adminPassword = DEFAULT_PASSWORD;
             render();
           }
         })
@@ -741,8 +745,21 @@
     saveState(render);
   }
   function resetAll(){
+    var keepPassword = state.adminPassword;
     state = defaultState();
+    state.adminPassword = keepPassword; // resetting the queue shouldn't reset the password
     saveState(render);
+  }
+  function changePassword(){
+    askText("Change control room password", "Set a new password. Everyone who needs to operate the control room will need this new password.", "New password", "text").then(function(newPass){
+      if (newPass === null) return;
+      newPass = newPass.trim();
+      if (!newPass){ showAlert("Password not changed", "Password can't be empty."); return; }
+      state.adminPassword = newPass;
+      saveState(function(){
+        showAlert("Password changed", "The control room password has been updated for everyone.");
+      });
+    });
   }
 
   // ---------------- render ----------------
@@ -1006,6 +1023,7 @@
       if (ok) resetAll();
     });
   });
+  document.getElementById("btnChangePassword").addEventListener("click", changePassword);
 
   document.getElementById("btnDisplay").addEventListener("click", function(){
     role="display";
@@ -1026,7 +1044,7 @@
     if (controlUnlocked){ unlock(); return; }
     askText("Control room access", "Enter the control room password:", "Password", "password").then(function(pass){
       if (pass === null) return; // cancelled
-      if (pass === ADMIN_PASSWORD){ unlock(); }
+      if (pass === state.adminPassword){ unlock(); }
       else { showAlert("Incorrect password", "That password isn't correct. Please try again."); }
     });
   });
