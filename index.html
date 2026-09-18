@@ -317,7 +317,7 @@
             back into Lab 2 or Lab 1 waiting, nothing is lost.
           </div>
           <div class="btn-row section-gap">
-            <button class="btn danger small" id="btnReset">Reset entire queue</button>
+            <button class="btn danger small" id="btnReset">Start real event — full reset (code required)</button>
             <button class="btn small" id="btnChangePassword">Change control room password</button>
           </div>
         </details>
@@ -777,6 +777,33 @@
     syncLiveTracking();
     saveState(render);
   }
+  function markAbsent(pid){
+    // Mark a team absent directly from the Classrooms list, without having
+    // to call them forward first. Same underlying status as "Skip", just
+    // reachable from anywhere — recall it later from Admin tools if needed.
+    pid = parseInt(pid,10);
+    if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
+    state.teams[pid].status = "skipped";
+    state.teams[pid].endedAt = Date.now();
+    syncLiveTracking();
+    saveState(render);
+  }
+  function sendBackToClassroom(pid){
+    // Undo an accidental call: a team currently in Live/Lab2/Lab1 goes back
+    // to waiting in its classroom, reinserted in normal P_ID order among the
+    // other still-waiting teams (not penalized to the very end of the line).
+    pid = parseInt(pid,10);
+    if (!state.teams[pid] || state.teams[pid].status!=="pending") return;
+    var without = state.queueOrder.filter(function(p){ return p!==pid; });
+    var idx = -1;
+    for (var i=0;i<without.length;i++){
+      if (without[i] > pid && state.teams[without[i]] && state.teams[without[i]].status==="pending"){ idx = i; break; }
+    }
+    if (idx === -1) without.push(pid); else without.splice(idx, 0, pid);
+    state.queueOrder = without;
+    syncLiveTracking();
+    saveState(render);
+  }
   function postNotice(){
     var input = document.getElementById("noticeInput");
     var val = input.value.trim();
@@ -895,7 +922,8 @@
         controls =
           '<div class="btn-row">'+
             '<button class="btn primary" data-action="startTimer">Start timer — permission to begin</button>'+
-            '<button class="btn danger" data-action="skip">Skip this team</button>'+
+            '<button class="btn" data-action="sendBack" data-pid="'+pid+'" title="Wrong team called — send them back to waiting">↓ Wrong team — back to classroom</button>'+
+            '<button class="btn danger" data-action="skip">Mark absent / skip</button>'+
           '</div>'+
           '<div class="btn-row" style="margin-top:8px;">'+
             '<span class="timer-sub" style="align-self:center;">Presentation length:</span>'+
@@ -1022,11 +1050,17 @@
           etaTxt = ' <span class="eta">~ETA '+fmtClockTime(etas[t.pid])+'</span>';
         }
         var extraBadge = t.extraSec>0 ? ' <span class="extra-badge">+'+Math.round(t.extraSec/60)+'m</span>' : "";
-        var overrideBtn = "";
+        var actionBtns = "";
         if (role==="control" && t.status==="pending" && t.pid!==livePid){
-          overrideBtn = '<button data-action="moveToFront" data-pid="'+t.pid+'" title="Emergency override: call this team next">↑ Call next</button>';
+          if (t.pid===lab2Pid || t.pid===lab1Pid){
+            actionBtns = '<button data-action="sendBack" data-pid="'+t.pid+'" title="Undo an accidental call — send back to waiting">↓ Back to classroom</button>';
+          } else {
+            actionBtns =
+              '<button data-action="moveToFront" data-pid="'+t.pid+'" title="Emergency override: call this team next">↑ Call next</button>'+
+              '<button data-action="markAbsent" data-pid="'+t.pid+'" title="Mark this team absent">Mark absent</button>';
+          }
         }
-        html += '<span class="'+cls+'"><span class="pidb">P'+t.pid+' · '+esc(t.teamId)+'</span>'+esc(t.teamName)+stageLabel+extraBadge+etaTxt+overrideBtn+'</span>';
+        html += '<span class="'+cls+'"><span class="pidb">P'+t.pid+' · '+esc(t.teamId)+'</span>'+esc(t.teamName)+stageLabel+extraBadge+etaTxt+actionBtns+'</span>';
       });
       html += '</div></div>';
     });
@@ -1117,6 +1151,16 @@
           if (ok) moveToFront(pid);
         });
         break;
+      case "sendBack":
+        askConfirm("Send back to classroom", "This team was called by mistake — send them back to waiting in their classroom? They'll be called again normally when it's their turn.").then(function(ok){
+          if (ok) sendBackToClassroom(pid);
+        });
+        break;
+      case "markAbsent":
+        askConfirm("Mark absent", "Mark this team as absent? They won't be called until you recall them from Admin tools.").then(function(ok){
+          if (ok) markAbsent(pid);
+        });
+        break;
       case "presetP": setPreset("presentation", parseInt(btn.getAttribute("data-sec"),10)); break;
       case "presetQ": setPreset("qna", parseInt(btn.getAttribute("data-sec"),10)); break;
     }
@@ -1128,8 +1172,14 @@
   document.getElementById("btnAward").addEventListener("click", startAward);
   document.getElementById("btnLunch").addEventListener("click", toggleLunch);
   document.getElementById("btnReset").addEventListener("click", function(){
-    askConfirm("Reset entire queue", "This will reset all 31 teams back to their classrooms and clear all timers, extra time, and notices. Are you sure?").then(function(ok){
-      if (ok) resetAll();
+    askText("Start the real event — full reset", "This wipes ALL progress: every team goes back to pending, all completed/skipped/absent counts return to 0, timers and notices clear. This cannot be undone. Type the reset code 10259 to confirm.", "Reset code", "text").then(function(code){
+      if (code === null) return;
+      if (code.trim() !== "10259"){
+        showAlert("Wrong code", "That's not the reset code — nothing was changed.");
+        return;
+      }
+      resetAll();
+      showAlert("Reset complete", "All 31 teams are back to pending. The event starts fresh from here.");
     });
   });
   document.getElementById("btnChangePassword").addEventListener("click", changePassword);
